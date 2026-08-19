@@ -1,0 +1,75 @@
+version: 1
+
+dimensions:
+
+  time:
+
+    label: Time
+
+    fields:
+
+      year:
+        label: Year
+        source_column: year
+        data_type: integer
+
+      quarter:
+        label: Quarter
+        source_column: quarter
+        data_type: string
+
+      month:
+        label: Month
+        source_column: month
+        data_type: integer
+
+      order_date:
+        label: Order Date
+        source_column: order_date
+        data_type: date
+
+
+  geography:
+
+    label: Geography
+
+    fields:
+
+      region:
+        label: Region
+        source_column: region
+        data_type: string
+
+      country:
+        label: Country
+        source_column: country
+        data_type: string
+
+
+  product:
+
+    label: Product
+
+    fields:
+
+      product_category:
+        label: Product Category
+        source_column: product_category
+        data_type: string
+
+      product:
+        label: Product
+        source_column: product
+        data_type: string
+
+
+  customer:
+
+    label: Customer
+
+    fields:
+
+      customer_segment:
+        label: Customer Segment
+        source_column: customer_segment
+        data_type: string

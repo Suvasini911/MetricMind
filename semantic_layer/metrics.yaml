@@ -1,0 +1,65 @@
+version: 1
+
+metrics:
+
+  revenue:
+    label: Revenue
+    description: Total revenue generated from sales transactions.
+    source_column: revenue
+    aggregation: SUM
+    data_type: currency
+    allowed: true
+
+  cost:
+    label: Cost
+    description: Total operational cost including material, shipping, and marketing costs.
+    source_column: total_cost
+    aggregation: SUM
+    data_type: currency
+    allowed: true
+
+  profit:
+    label: Profit
+    description: Revenue minus total operational cost.
+    expression: SUM(revenue) - SUM(total_cost)
+    data_type: currency
+    allowed: true
+
+  margin:
+    label: Margin
+    description: Profit divided by revenue.
+    expression: SUM(profit) / NULLIF(SUM(revenue), 0)
+    data_type: percentage
+    allowed: true
+
+  orders:
+    label: Orders
+    description: Total number of orders.
+    source_column: orders
+    aggregation: SUM
+    data_type: integer
+    allowed: true
+
+  material_cost:
+    label: Material Cost
+    description: Total material cost associated with sales.
+    source_column: material_cost
+    aggregation: SUM
+    data_type: currency
+    allowed: true
+
+  shipping_cost:
+    label: Shipping Cost
+    description: Total shipping cost associated with sales.
+    source_column: shipping_cost
+    aggregation: SUM
+    data_type: currency
+    allowed: true
+
+  marketing_cost:
+    label: Marketing Cost
+    description: Total marketing cost associated with sales.
+    source_column: marketing_cost
+    aggregation: SUM
+    data_type: currency
+    allowed: true

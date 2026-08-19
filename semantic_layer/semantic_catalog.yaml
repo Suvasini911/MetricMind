@@ -1,0 +1,56 @@
+semantic_layer:
+
+  name: MetricMind Semantic Layer
+
+  version: "1.0"
+
+  description: >
+    Governed business definitions used by MetricMind
+    for conversational business intelligence.
+
+  source:
+    database: metricmind
+    table: corporate_sales_raw
+
+  metrics:
+
+    - revenue
+    - cost
+    - profit
+    - margin
+    - orders
+    - material_cost
+    - shipping_cost
+    - marketing_cost
+
+  dimensions:
+
+    - time
+    - geography
+    - product
+    - customer
+
+  governed_queries:
+
+    - revenue_by_region
+    - revenue_by_country
+    - revenue_by_product
+    - monthly_revenue
+    - quarterly_revenue
+    - regional_margin
+    - product_margin
+    - cost_driver_analysis
+
+  governance:
+
+    allow_unknown_metrics: false
+
+    allow_unknown_dimensions: false
+
+    allow_raw_sql_generation: false
+
+    require_metric_definition: true
+
+    require_dimension_definition: true
+
+    require_valid_filter: true
