@@ -1,7 +1,5 @@
 export async function analyzeQuestion(question) {
-
   try {
-
     const response = await fetch(
       `http://127.0.0.1:8000/api/query?question=${encodeURIComponent(question)}`
     );
@@ -13,36 +11,75 @@ export async function analyzeQuestion(question) {
     const data = await response.json();
 
     if (data.status === "verified") {
+  // Root-cause analysis response
+  if (data.analysis) {
+    return {
+      title: "European margin analysis",
 
-      return {
-        title: `${data.metric} analysis`,
+      summary:
+        `Europe's Q3 margin was ${data.analysis.margin}%. ` +
+        `MetricMind calculated this using governed revenue and profit data.`,
 
-        summary:
-          `${data.metric} for ${data.filter} is ${formatValue(data.value)}.`,
+      metrics: [
+        {
+          label: "Revenue",
+          value: formatValue(data.analysis.revenue, "Revenue"),
+        },
+        {
+          label: "Profit",
+          value: formatValue(data.analysis.profit, "Profit"),
+        },
+        {
+          label: "Margin",
+          value: `${data.analysis.margin}%`,
+        },
+      ],
 
-        metrics: [
-          {
-            label: "Metric",
-            value: data.metric,
-          },
-          {
-            label: data.dimension,
-            value: data.filter,
-          },
-          {
-            label: "Value",
-            value: formatValue(data.value),
-          },
-        ],
+      drivers: [
+        "Scope: Europe",
+        "Period: Q3",
+        "Margin calculated as Profit / Revenue",
+        "Result retrieved from the governed analytics layer",
+      ],
+    };
+  }
 
-        drivers: [
-          `Metric: ${data.metric}`,
-          `Dimension: ${data.dimension}`,
-          `Filter: ${data.filter}`,
-          "Result retrieved from the MetricMind warehouse",
-        ],
-      };
-    }
+  // Standard metric response
+  return {
+    title: `${data.metric} analysis`,
+
+    summary:
+      `${data.metric} for ${data.filter} is ${formatValue(
+        data.value,
+        data.metric
+      )}.`,
+
+    metrics: [
+      {
+        label: "Metric",
+        value: data.metric,
+      },
+      {
+        label: data.dimension,
+        value: data.filter,
+      },
+      {
+        label: "Value",
+        value: formatValue(
+          data.value,
+          data.metric
+        ),
+      },
+    ],
+
+    drivers: [
+      `Metric: ${data.metric}`,
+      `Dimension: ${data.dimension}`,
+      `Filter: ${data.filter}`,
+      "Result retrieved from the MetricMind analytics engine",
+    ],
+  };
+}
 
     return {
       title: "Governed analysis",
@@ -74,7 +111,6 @@ export async function analyzeQuestion(question) {
     };
 
   } catch (error) {
-
     console.error(error);
 
     return {
@@ -108,10 +144,13 @@ export async function analyzeQuestion(question) {
 }
 
 
-function formatValue(value) {
-
+function formatValue(value, metric) {
   if (typeof value !== "number") {
     return String(value);
+  }
+
+  if (metric === "Margin") {
+    return `${(value * 100).toFixed(2)}%`;
   }
 
   return new Intl.NumberFormat(
