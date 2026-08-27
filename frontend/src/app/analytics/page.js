@@ -26,6 +26,15 @@ export default function AnalyticsPage() {
           fetch(`${API}/api/analytics/cost-drivers`),
         ]);
 
+        if (
+          !regionalResponse.ok ||
+          !performanceResponse.ok ||
+          !monthlyResponse.ok ||
+          !driversResponse.ok
+        ) {
+          throw new Error("Analytics API request failed");
+        }
+
         const regionalData = await regionalResponse.json();
         const performanceData = await performanceResponse.json();
         const monthlyData = await monthlyResponse.json();
@@ -87,6 +96,39 @@ export default function AnalyticsPage() {
       ? (totalProfit / totalRevenue) * 100
       : 0;
 
+  const costTotals = drivers.reduce(
+    (acc, item) => ({
+      material:
+        acc.material + Number(item.material_cost ?? 0),
+
+      shipping:
+        acc.shipping + Number(item.shipping_cost ?? 0),
+
+      marketing:
+        acc.marketing + Number(item.marketing_cost ?? 0),
+    }),
+    {
+      material: 0,
+      shipping: 0,
+      marketing: 0,
+    }
+  );
+
+  const costDrivers = [
+    {
+      name: "Material Cost",
+      value: costTotals.material,
+    },
+    {
+      name: "Shipping Cost",
+      value: costTotals.shipping,
+    },
+    {
+      name: "Marketing Cost",
+      value: costTotals.marketing,
+    },
+  ];
+
   return (
     <main className="analytics-page">
 
@@ -94,7 +136,9 @@ export default function AnalyticsPage() {
 
       <header className="analytics-header">
         <div>
-          <div className="eyebrow">METRICMIND / ANALYTICS</div>
+          <div className="eyebrow">
+            METRICMIND / ANALYTICS
+          </div>
 
           <h1>
             Business
@@ -102,8 +146,8 @@ export default function AnalyticsPage() {
           </h1>
 
           <p>
-            Explore governed performance metrics across regions,
-            periods and cost drivers.
+            Explore governed performance metrics across
+            regions, periods and cost drivers.
           </p>
         </div>
 
@@ -145,7 +189,7 @@ export default function AnalyticsPage() {
       </section>
 
 
-      {/* MAIN GRID */}
+      {/* DASHBOARD */}
 
       <section className="dashboard-grid">
 
@@ -163,7 +207,6 @@ export default function AnalyticsPage() {
             <div className="bar-list">
 
               {regional.map((item, index) => {
-
                 const name =
                   item.region ??
                   item.name ??
@@ -189,17 +232,24 @@ export default function AnalyticsPage() {
                 const width = (value / max) * 100;
 
                 return (
-                  <div className="bar-row" key={name}>
+                  <div
+                    className="bar-row"
+                    key={`${name}-${index}`}
+                  >
 
                     <div className="bar-label">
                       <span>{name}</span>
-                      <strong>{formatMoney(value)}</strong>
+                      <strong>
+                        {formatMoney(value)}
+                      </strong>
                     </div>
 
                     <div className="bar-track">
                       <div
                         className="bar-fill"
-                        style={{ width: `${width}%` }}
+                        style={{
+                          width: `${width}%`,
+                        }}
                       />
                     </div>
 
@@ -212,7 +262,7 @@ export default function AnalyticsPage() {
         </Panel>
 
 
-        {/* PERFORMANCE */}
+        {/* REGIONAL PERFORMANCE */}
 
         <Panel
           title="Regional performance"
@@ -232,7 +282,6 @@ export default function AnalyticsPage() {
               </div>
 
               {performance.map((item, index) => {
-
                 const region =
                   item.region ??
                   item.name ??
@@ -255,6 +304,7 @@ export default function AnalyticsPage() {
                     className="table-row"
                     key={`${region}-${index}`}
                   >
+
                     <span>{region}</span>
 
                     <strong>
@@ -266,6 +316,7 @@ export default function AnalyticsPage() {
                         ? `${margin.toFixed(1)}%`
                         : `${(margin * 100).toFixed(1)}%`}
                     </span>
+
                   </div>
                 );
               })}
@@ -275,7 +326,7 @@ export default function AnalyticsPage() {
         </Panel>
 
 
-        {/* MONTHLY PERFORMANCE */}
+        {/* PERFORMANCE TIMELINE */}
 
         <Panel
           title="Performance timeline"
@@ -290,7 +341,6 @@ export default function AnalyticsPage() {
             <div className="timeline">
 
               {monthly.map((item, index) => {
-
                 const label =
                   item.month ??
                   item.period ??
@@ -309,36 +359,49 @@ export default function AnalyticsPage() {
                   0
                 );
 
+                const maxRevenue = Math.max(
+                  ...monthly.map((x) =>
+                    Number(
+                      x.revenue ??
+                      x.total_revenue ??
+                      0
+                    )
+                  ),
+                  1
+                );
+
+                const width =
+                  (revenue / maxRevenue) * 100;
+
                 return (
                   <div
                     className="timeline-item"
                     key={`${label}-${index}`}
                   >
+
                     <div className="timeline-top">
                       <span>{label}</span>
-                      <strong>{formatMoney(revenue)}</strong>
+
+                      <strong>
+                        {formatMoney(revenue)}
+                      </strong>
                     </div>
 
                     <div className="timeline-track">
+
                       <div
                         className="timeline-revenue"
                         style={{
-                          width: `${Math.min(
-                            100,
-                            Math.max(
-                              8,
-                              (revenue /
-                                Math.max(totalRevenue, revenue, 1)) *
-                                100
-                            )
-                          )}%`,
+                          width: `${width}%`,
                         }}
                       />
+
                     </div>
 
                     <small>
                       Profit {formatMoney(profit)}
                     </small>
+
                   </div>
                 );
               })}
@@ -361,42 +424,30 @@ export default function AnalyticsPage() {
           ) : (
             <div className="driver-list">
 
-              {drivers.map((item, index) => {
+              {costDrivers.map((driver, index) => (
+                <div
+                  className="driver"
+                  key={driver.name}
+                >
 
-                const name =
-                  item.name ??
-                  item.driver ??
-                  item.cost_driver ??
-                  `Driver ${index + 1}`;
+                  <div>
 
-                const value = Number(
-                  item.change ??
-                  item.cost_change ??
-                  item.value ??
-                  0
-                );
+                    <span className="driver-number">
+                      {String(index + 1).padStart(2, "0")}
+                    </span>
 
-                return (
-                  <div
-                    className="driver"
-                    key={`${name}-${index}`}
-                  >
-
-                    <div>
-                      <span className="driver-number">
-                        {String(index + 1).padStart(2, "0")}
-                      </span>
-
-                      <span>{name}</span>
-                    </div>
-
-                    <strong>
-                      {formatMoney(value)}
-                    </strong>
+                    <span>
+                      {driver.name}
+                    </span>
 
                   </div>
-                );
-              })}
+
+                  <strong>
+                    {formatMoney(driver.value)}
+                  </strong>
+
+                </div>
+              ))}
 
             </div>
           )}
@@ -405,7 +456,7 @@ export default function AnalyticsPage() {
       </section>
 
 
-      {/* GOVERNANCE FOOTER */}
+      {/* GOVERNANCE */}
 
       <section className="governance-strip">
 
@@ -433,7 +484,9 @@ export default function AnalyticsPage() {
 }
 
 
-/* ---------------- COMPONENTS ---------------- */
+/* =========================
+   KPI
+========================= */
 
 function KPI({ label, value, detail }) {
   return (
@@ -456,9 +509,22 @@ function KPI({ label, value, detail }) {
 }
 
 
-function Panel({ title, subtitle, children, wide }) {
+/* =========================
+   PANEL
+========================= */
+
+function Panel({
+  title,
+  subtitle,
+  children,
+  wide,
+}) {
   return (
-    <section className={`panel ${wide ? "wide" : ""}`}>
+    <section
+      className={`panel ${
+        wide ? "wide" : ""
+      }`}
+    >
 
       <div className="panel-header">
 
@@ -480,6 +546,10 @@ function Panel({ title, subtitle, children, wide }) {
 }
 
 
+/* =========================
+   LOADING
+========================= */
+
 function Loading() {
   return (
     <div className="loading">
@@ -488,6 +558,10 @@ function Loading() {
   );
 }
 
+
+/* =========================
+   EMPTY
+========================= */
 
 function Empty() {
   return (
@@ -498,10 +572,14 @@ function Empty() {
 }
 
 
-/* ---------------- HELPERS ---------------- */
+/* =========================
+   FORMAT MONEY
+========================= */
 
 function formatMoney(value) {
-  if (!Number.isFinite(value)) return "$0";
+  if (!Number.isFinite(value)) {
+    return "$0";
+  }
 
   return new Intl.NumberFormat("en-US", {
     style: "currency",
@@ -511,8 +589,14 @@ function formatMoney(value) {
 }
 
 
+/* =========================
+   FORMAT NUMBER
+========================= */
+
 function formatNumber(value) {
-  if (!Number.isFinite(value)) return "0";
+  if (!Number.isFinite(value)) {
+    return "0";
+  }
 
   return new Intl.NumberFormat("en-US").format(
     Math.round(value)
