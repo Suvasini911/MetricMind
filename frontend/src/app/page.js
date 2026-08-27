@@ -170,9 +170,10 @@ export default function Home() {
               />
 
               <NavItem
-                icon={<BarChart3 size={16} />}
-                label="Analytics"
-              />
+  icon={<BarChart3 size={16} />}
+  label="Analytics"
+  href="/analytics"
+/>
 
               <NavItem
                 icon={<Network size={16} />}
@@ -827,15 +828,24 @@ export default function Home() {
 /* COMPONENTS */
 /* ========================================================= */
 
-function NavItem({ icon, label, active = false }) {
+function NavItem({ icon, label, active = false, href }) {
+  const className = `flex cursor-pointer items-center gap-3 rounded-lg px-3 py-2.5 text-xs transition ${
+    active
+      ? "bg-white/[0.08] text-white"
+      : "text-white/35 hover:bg-white/[0.04] hover:text-white/70"
+  }`;
+
+  if (href) {
+    return (
+      <a href={href} className={className}>
+        {icon}
+        {label}
+      </a>
+    );
+  }
+
   return (
-    <div
-      className={`flex cursor-pointer items-center gap-3 rounded-lg px-3 py-2.5 text-xs transition ${
-        active
-          ? "bg-white/[0.08] text-white"
-          : "text-white/35 hover:bg-white/[0.04] hover:text-white/70"
-      }`}
-    >
+    <div className={className}>
       {icon}
       {label}
     </div>
