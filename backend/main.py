@@ -1,147 +1,520 @@
-from fastapi import FastAPI, Query
-from fastapi.middleware.cors import CORSMiddleware
 from pathlib import Path
-import pandas as pd
+import sqlite3
+
+from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+
+
+# =========================================================
+# MetricMind Backend
+# =========================================================
+
+BASE_DIR = Path(__file__).resolve().parent.parent
+DATABASE = BASE_DIR / "warehouse" / "metricmind.db"
 
 
 app = FastAPI(
-    title="MetricMind Analytics API",
-    version="1.0.0"
+    title="MetricMind API",
+    description="Governed analytics API for MetricMind",
+    version="1.0.0",
 )
 
 
+# =========================================================
+# CORS
+# =========================================================
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
+    allow_origins=[
+        "http://localhost:3000",
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
 
-BASE_DIR = Path(__file__).resolve().parent.parent
+# =========================================================
+# DATABASE
+# =========================================================
 
-DATA_FILE = (
-    BASE_DIR
-    / "data"
-    / "processed"
-    / "clean_sales.csv"
-)
+def get_connection():
 
-df = pd.read_csv(DATA_FILE)
+    if not DATABASE.exists():
+        raise HTTPException(
+            status_code=500,
+            detail=f"Warehouse database not found: {DATABASE}",
+        )
 
+    connection = sqlite3.connect(DATABASE)
+    connection.row_factory = sqlite3.Row
+
+    return connection
+
+
+# =========================================================
+# ROOT
+# =========================================================
 
 @app.get("/")
-def health_check():
+def root():
+
     return {
-        "status": "healthy",
-        "service": "MetricMind Analytics API",
-        "records_loaded": len(df)
+        "name": "MetricMind API",
+        "status": "operational",
+        "warehouse": "connected",
     }
 
+
+# =========================================================
+# HEALTH
+# =========================================================
+
+@app.get("/api/health")
+def health():
+
+    connection = get_connection()
+
+    try:
+
+        cursor = connection.cursor()
+
+        cursor.execute(
+            "SELECT COUNT(*) AS count FROM corporate_sales_raw"
+        )
+
+        row = cursor.fetchone()
+
+        return {
+            "status": "healthy",
+            "warehouse": "connected",
+            "records": row["count"],
+        }
+
+    finally:
+
+        connection.close()
+
+
+# =========================================================
+# REGIONAL REVENUE
+# =========================================================
+
+@app.get("/api/analytics/regional-revenue")
+def regional_revenue():
+
+    connection = get_connection()
+
+    try:
+
+        cursor = connection.cursor()
+
+        cursor.execute("""
+            SELECT
+                region,
+                ROUND(SUM(revenue), 2) AS revenue
+            FROM corporate_sales_raw
+            GROUP BY region
+            ORDER BY revenue DESC
+        """)
+
+        rows = cursor.fetchall()
+
+        return {
+            "metric": "Revenue",
+            "dimension": "Region",
+            "data": [dict(row) for row in rows],
+        }
+
+    finally:
+
+        connection.close()
+
+
+# =========================================================
+# REGIONAL PERFORMANCE
+# =========================================================
+
+@app.get("/api/analytics/regional-performance")
+def regional_performance():
+
+    connection = get_connection()
+
+    try:
+
+        cursor = connection.cursor()
+
+        cursor.execute("""
+            SELECT
+                region,
+                ROUND(total_revenue, 2) AS total_revenue,
+                ROUND(total_cost, 2) AS total_cost,
+                ROUND(total_profit, 2) AS total_profit,
+                ROUND(profit_margin * 100, 2) AS profit_margin,
+                total_orders
+            FROM regional_performance
+            ORDER BY total_revenue DESC
+        """)
+
+        rows = cursor.fetchall()
+
+        return {
+            "metric": "Regional Performance",
+            "data": [dict(row) for row in rows],
+        }
+
+    finally:
+
+        connection.close()
+
+
+# =========================================================
+# MONTHLY PERFORMANCE
+# =========================================================
+
+@app.get("/api/analytics/monthly-performance")
+def monthly_performance():
+
+    connection = get_connection()
+
+    try:
+
+        cursor = connection.cursor()
+
+        cursor.execute("""
+            SELECT
+                year,
+                quarter,
+                month,
+                ROUND(total_revenue, 2) AS total_revenue,
+                ROUND(total_cost, 2) AS total_cost,
+                ROUND(total_profit, 2) AS total_profit,
+                ROUND(profit_margin * 100, 2) AS profit_margin,
+                total_orders
+            FROM monthly_performance
+            ORDER BY year, month
+        """)
+
+        rows = cursor.fetchall()
+
+        return {
+            "metric": "Monthly Performance",
+            "data": [dict(row) for row in rows],
+        }
+
+    finally:
+
+        connection.close()
+
+
+# =========================================================
+# COST DRIVER ANALYSIS
+# =========================================================
+
+@app.get("/api/analytics/cost-drivers")
+def cost_drivers():
+
+    connection = get_connection()
+
+    try:
+
+        cursor = connection.cursor()
+
+        cursor.execute("""
+            SELECT
+                region,
+                year,
+                quarter,
+                ROUND(total_revenue, 2) AS total_revenue,
+                ROUND(material_cost, 2) AS material_cost,
+                ROUND(shipping_cost, 2) AS shipping_cost,
+                ROUND(marketing_cost, 2) AS marketing_cost,
+                ROUND(total_cost, 2) AS total_cost,
+                ROUND(total_profit, 2) AS total_profit,
+                ROUND(profit_margin * 100, 2) AS profit_margin
+            FROM cost_driver_analysis
+            ORDER BY year, quarter, region
+        """)
+
+        rows = cursor.fetchall()
+
+        return {
+            "metric": "Cost Driver Analysis",
+            "data": [dict(row) for row in rows],
+        }
+
+    finally:
+
+        connection.close()
+
+
+# =========================================================
+# SIMPLE NATURAL LANGUAGE QUERY
+# =========================================================
 
 @app.get("/api/query")
-def query_metricmind(question: str = Query(...)):
+def query(question: str):
 
-    normalized = question.lower()
+    connection = get_connection()
 
-    # Q3 Revenue
-    if "q3" in normalized and "revenue" in normalized:
+    try:
 
-        result = df[
-            df["quarter"] == "Q3"
-        ]["revenue"].sum()
+        cursor = connection.cursor()
 
-        return {
-            "status": "verified",
-            "metric": "Revenue",
-            "dimension": "Quarter",
-            "filter": "Q3",
-            "value": round(float(result), 2)
-        }
+        normalized = question.lower().strip()
 
-    # European Sales
-    if (
-        "europe" in normalized
-        and ("sales" in normalized or "revenue" in normalized)
-    ):
+        # -------------------------------------------------
+        # European sales
+        # -------------------------------------------------
 
-        result = df[
-            df["region"] == "Europe"
-        ]["revenue"].sum()
+        if (
+            "european sales" in normalized
+            or "europe sales" in normalized
+        ):
 
-        return {
-            "status": "verified",
-            "metric": "Revenue",
-            "dimension": "Region",
-            "filter": "Europe",
-            "value": round(float(result), 2)
-        }
+            cursor.execute("""
+                SELECT
+                    ROUND(SUM(revenue), 2) AS revenue
+                FROM corporate_sales_raw
+                WHERE LOWER(region) = 'europe'
+            """)
 
-    # Highest Margin Region
-    if "highest margin" in normalized:
+            row = cursor.fetchone()
 
-        grouped = df.groupby("region").agg(
-            revenue=("revenue", "sum"),
-            profit=("profit", "sum")
-        )
-
-        grouped["margin"] = (
-            grouped["profit"] / grouped["revenue"]
-        )
-
-        region = grouped["margin"].idxmax()
-        value = grouped.loc[region, "margin"]
-
-        return {
-            "status": "verified",
-            "metric": "Margin",
-            "dimension": "Region",
-            "filter": region,
-            "value": round(float(value), 4)
-        }
-
-        # European Margin Root-Cause Analysis
-    if (
-        "european" in normalized
-        or "europe" in normalized
-    ) and (
-        "margin" in normalized
-        or "margins" in normalized
-    ) and (
-        "drop" in normalized
-        or "why" in normalized
-    ):
-
-        europe = df[df["region"] == "Europe"].copy()
-
-        if "quarter" in europe.columns:
-            europe_q3 = europe[europe["quarter"] == "Q3"]
-        else:
-            europe_q3 = europe
-
-        revenue = europe_q3["revenue"].sum()
-        profit = europe_q3["profit"].sum()
-
-        margin = profit / revenue if revenue else 0
-
-        return {
-            "status": "verified",
-            "metric": "Margin",
-            "dimension": "Region / Quarter",
-            "filter": "Europe / Q3",
-            "value": round(float(margin), 4),
-            "analysis": {
-                "revenue": round(float(revenue), 2),
-                "profit": round(float(profit), 2),
-                "margin": round(float(margin * 100), 2),
+            return {
+                "question": question,
+                "metric": "Revenue",
+                "dimension": "Region",
+                "filter": "Europe",
+                "value": row["revenue"],
+                "status": "verified",
             }
+
+        # -------------------------------------------------
+        # Q3 revenue
+        # -------------------------------------------------
+
+        if (
+            "q3 revenue" in normalized
+            or (
+                "revenue" in normalized
+                and "q3" in normalized
+            )
+        ):
+
+            cursor.execute("""
+                SELECT
+                    ROUND(SUM(revenue), 2) AS revenue
+                FROM corporate_sales_raw
+                WHERE LOWER(quarter) = 'q3'
+            """)
+
+            row = cursor.fetchone()
+
+            return {
+                "question": question,
+                "metric": "Revenue",
+                "dimension": "Quarter",
+                "filter": "Q3",
+                "value": row["revenue"],
+                "status": "verified",
+            }
+
+        return {
+            "question": question,
+            "status": "recognized",
+            "message": (
+                "The question was recognized, "
+                "but this query is not yet implemented."
+            ),
         }
 
-    return {
-        "status": "recognized",
-        "message": (
-            "MetricMind recognized this question, "
-            "but this governed query is not implemented yet."
+    finally:
+
+        connection.close()
+
+
+# =========================================================
+# MARGIN ROOT-CAUSE ANALYSIS
+# =========================================================
+
+@app.get("/api/analytics/margin-root-cause")
+def margin_root_cause(region: str = "Europe"):
+
+    connection = get_connection()
+
+    try:
+
+        cursor = connection.cursor()
+
+        cursor.execute("""
+            SELECT
+                quarter,
+                SUM(total_revenue) AS revenue,
+                SUM(material_cost) AS material_cost,
+                SUM(shipping_cost) AS shipping_cost,
+                SUM(marketing_cost) AS marketing_cost,
+                SUM(total_cost) AS total_cost,
+                SUM(total_profit) AS profit
+            FROM cost_driver_analysis
+            WHERE LOWER(region) = LOWER(?)
+              AND quarter IN ('Q2', 'Q3')
+            GROUP BY quarter
+            ORDER BY quarter
+        """, (region,))
+
+        rows = cursor.fetchall()
+
+        if len(rows) < 2:
+
+            return {
+                "status": "insufficient_data",
+                "region": region,
+                "message": (
+                    "Not enough quarterly data is available "
+                    "for a Q2 versus Q3 comparison."
+                ),
+            }
+
+        data = {
+            row["quarter"]: dict(row)
+            for row in rows
+        }
+
+        q2 = data.get("Q2")
+        q3 = data.get("Q3")
+
+        if not q2 or not q3:
+
+            return {
+                "status": "insufficient_data",
+                "region": region,
+                "message": "Q2 and Q3 data are required.",
+            }
+
+        # -------------------------------------------------
+        # Calculate margins
+        # -------------------------------------------------
+
+        q2_margin = (
+            q2["profit"] / q2["revenue"]
+            if q2["revenue"]
+            else 0
         )
-    }
+
+        q3_margin = (
+            q3["profit"] / q3["revenue"]
+            if q3["revenue"]
+            else 0
+        )
+
+        margin_change = q3_margin - q2_margin
+
+        # -------------------------------------------------
+        # Cost changes
+        # -------------------------------------------------
+
+        material_change = (
+            q3["material_cost"]
+            - q2["material_cost"]
+        )
+
+        shipping_change = (
+            q3["shipping_cost"]
+            - q2["shipping_cost"]
+        )
+
+        marketing_change = (
+            q3["marketing_cost"]
+            - q2["marketing_cost"]
+        )
+
+        drivers = [
+            {
+                "name": "Material cost",
+                "change": material_change,
+            },
+            {
+                "name": "Shipping cost",
+                "change": shipping_change,
+            },
+            {
+                "name": "Marketing cost",
+                "change": marketing_change,
+            },
+        ]
+
+        drivers.sort(
+            key=lambda item: item["change"],
+            reverse=True
+        )
+
+        top_driver = drivers[0]
+
+        # -------------------------------------------------
+        # Explanation
+        # -------------------------------------------------
+
+        if margin_change < 0:
+
+            summary = (
+                f"{region} margin declined from "
+                f"{q2_margin * 100:.2f}% in Q2 to "
+                f"{q3_margin * 100:.2f}% in Q3. "
+                f"The largest increase among tracked "
+                f"cost drivers was {top_driver['name']}."
+            )
+
+        else:
+
+            summary = (
+                f"{region} margin did not decline between "
+                f"Q2 and Q3. Margin changed from "
+                f"{q2_margin * 100:.2f}% to "
+                f"{q3_margin * 100:.2f}%."
+            )
+
+        return {
+
+            "status": "verified",
+
+            "region": region,
+
+            "comparison": {
+                "previous_period": "Q2",
+                "current_period": "Q3",
+            },
+
+            "metrics": {
+                "q2_margin": round(
+                    q2_margin * 100,
+                    2
+                ),
+                "q3_margin": round(
+                    q3_margin * 100,
+                    2
+                ),
+                "margin_change": round(
+                    margin_change * 100,
+                    2
+                ),
+            },
+
+            "cost_drivers": [
+                {
+                    "name": driver["name"],
+                    "change": round(
+                        driver["change"],
+                        2
+                    ),
+                }
+                for driver in drivers
+            ],
+
+            "summary": summary,
+        }
+
+    finally:
+
+        connection.close()
