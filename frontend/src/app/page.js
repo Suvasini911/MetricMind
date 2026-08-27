@@ -414,23 +414,21 @@ export default function Home() {
             </div>
 
             {/* ================================================= */}
-{/* ANALYSIS RESULT */}
-{/* ================================================= */}
-
 {result && (
+  <div className="mt-6 overflow-hidden rounded-2xl border border-indigo-400/10 bg-[#090c12] shadow-2xl shadow-indigo-950/10">
 
-  <div className="mt-6 rounded-2xl border border-indigo-400/10 bg-indigo-400/[0.025]">
-
-    <div className="flex items-center justify-between border-b border-white/[0.06] px-5 py-4">
+    {/* Result Header */}
+    <div className="flex items-center justify-between border-b border-white/[0.06] px-5 py-4 lg:px-6">
 
       <div>
-
         <div className="flex items-center gap-2">
 
-          <Sparkles
-            size={15}
-            className="text-indigo-300"
-          />
+          <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-indigo-400/[0.08]">
+            <Sparkles
+              size={14}
+              className="text-indigo-300"
+            />
+          </div>
 
           <p className="text-sm font-medium">
             {result.title}
@@ -441,77 +439,21 @@ export default function Home() {
         <p className="mt-1 text-[10px] text-white/25">
           Governed analytical response
         </p>
-
       </div>
 
-      <div className="rounded-full border border-emerald-400/10 bg-emerald-400/[0.04] px-2.5 py-1 text-[9px] text-emerald-300">
-        VERIFIED
-      </div>
+      <div className="flex items-center gap-2">
 
-    </div>
+        <span className="hidden rounded-full border border-white/[0.07] bg-white/[0.025] px-2.5 py-1 text-[9px] text-white/35 sm:block">
+          WAREHOUSE
+        </span>
 
+        <div className="flex items-center gap-1.5 rounded-full border border-emerald-400/10 bg-emerald-400/[0.04] px-2.5 py-1">
 
-    <div className="p-5">
+          <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
 
-      <p className="max-w-3xl text-sm leading-6 text-white/65">
-        {result.summary}
-      </p>
-
-
-      {/* Result metrics */}
-
-      <div className="mt-5 grid gap-3 sm:grid-cols-3">
-
-        {result.metrics.map((metric) => (
-
-          <div
-            key={metric.label}
-            className="rounded-xl border border-white/[0.06] bg-black/20 p-4"
-          >
-
-            <p className="text-[9px] uppercase tracking-[0.15em] text-white/25">
-              {metric.label}
-            </p>
-
-            <p className="mt-2 text-sm font-medium text-white/80">
-              {metric.value}
-            </p>
-
-          </div>
-
-        ))}
-
-      </div>
-
-
-      {/* Drivers */}
-
-      <div className="mt-5">
-
-        <p className="text-[9px] uppercase tracking-[0.15em] text-white/25">
-          Analytical trace
-        </p>
-
-        <div className="mt-3 space-y-2">
-
-          {result.drivers.map((driver, index) => (
-
-            <div
-              key={index}
-              className="flex items-center gap-3 rounded-lg border border-white/[0.05] bg-white/[0.02] px-3 py-2.5"
-            >
-
-              <span className="flex h-5 w-5 items-center justify-center rounded-md bg-indigo-400/[0.08] text-[9px] text-indigo-300">
-                {index + 1}
-              </span>
-
-              <span className="text-[11px] text-white/40">
-                {driver}
-              </span>
-
-            </div>
-
-          ))}
+          <span className="text-[9px] text-emerald-300">
+            VERIFIED
+          </span>
 
         </div>
 
@@ -519,8 +461,225 @@ export default function Home() {
 
     </div>
 
-  </div>
 
+    {/* Insight Summary */}
+    <div className="border-b border-white/[0.05] px-5 py-5 lg:px-6">
+
+      <div className="flex gap-3">
+
+        <div className="mt-1 h-8 w-1 shrink-0 rounded-full bg-indigo-400/50" />
+
+        <p className="max-w-4xl text-sm leading-6 text-white/65">
+          {result.summary}
+        </p>
+
+      </div>
+
+    </div>
+
+
+    {/* Result Metrics */}
+    <div className="grid gap-px border-b border-white/[0.05] bg-white/[0.04] sm:grid-cols-3">
+
+      {result.metrics.map((metric, index) => (
+
+        <div
+          key={metric.label}
+          className="bg-[#090c12] p-5 transition hover:bg-white/[0.02]"
+        >
+
+          <div className="flex items-center justify-between">
+
+            <p className="text-[9px] uppercase tracking-[0.16em] text-white/25">
+              {metric.label}
+            </p>
+
+            <span className="text-[9px] text-white/15">
+              0{index + 1}
+            </span>
+
+          </div>
+
+          <p className="mt-3 text-xl font-semibold tracking-tight text-white">
+            {metric.value}
+          </p>
+
+        </div>
+
+      ))}
+
+    </div>
+
+
+    {/* Cost Driver Analysis */}
+    {result.drivers.length > 0 && (
+
+      <div className="border-b border-white/[0.05] p-5 lg:p-6">
+
+        <div className="flex items-end justify-between">
+
+          <div>
+
+            <p className="text-[9px] uppercase tracking-[0.18em] text-white/25">
+              Cost Driver Impact
+            </p>
+
+            <p className="mt-1 text-xs text-white/35">
+              Ranked contribution to the observed movement
+            </p>
+
+          </div>
+
+          <BarChart3
+            size={15}
+            className="text-indigo-300/60"
+          />
+
+        </div>
+
+
+        <div className="mt-5 space-y-4">
+
+          {result.drivers.map((driver, index) => {
+
+            const parsed = parseDriver(driver);
+
+            return (
+
+              <div key={index}>
+
+                <div className="mb-2 flex items-center justify-between">
+
+                  <div className="flex items-center gap-2">
+
+                    <span className="flex h-5 w-5 items-center justify-center rounded-md bg-indigo-400/[0.08] text-[9px] text-indigo-300">
+                      {String(index + 1).padStart(2, "0")}
+                    </span>
+
+                    <span className="text-[11px] text-white/50">
+                      {parsed.name}
+                    </span>
+
+                  </div>
+
+                  <span className="text-[10px] font-medium text-white/55">
+                    {parsed.value}
+                  </span>
+
+                </div>
+
+
+                {/* Driver bar */}
+
+                <div className="h-1.5 overflow-hidden rounded-full bg-white/[0.04]">
+
+                  <div
+                    className="h-full rounded-full bg-indigo-400/60 transition-all duration-700"
+                    style={{
+                      width: `${Math.max(
+                        8,
+                        parsed.percentage
+                      )}%`,
+                    }}
+                  />
+
+                </div>
+
+              </div>
+
+            );
+
+          })}
+
+        </div>
+
+      </div>
+
+    )}
+
+
+    {/* Analytical Trace */}
+
+    <div className="p-5 lg:p-6">
+
+      <div className="flex items-center justify-between">
+
+        <div>
+
+          <p className="text-[9px] uppercase tracking-[0.18em] text-white/25">
+            Analytical Trace
+          </p>
+
+          <p className="mt-1 text-xs text-white/30">
+            How MetricMind arrived at this result
+          </p>
+
+        </div>
+
+        <span className="rounded-md border border-indigo-400/10 bg-indigo-400/[0.05] px-2 py-1 text-[9px] text-indigo-300">
+          GOVERNED
+        </span>
+
+      </div>
+
+
+      <div className="mt-4 grid gap-2 md:grid-cols-2">
+
+        {result.drivers.length > 0 ? (
+
+          <>
+            <TraceItem
+              number="01"
+              text="Retrieved governed metrics from the warehouse"
+            />
+
+            <TraceItem
+              number="02"
+              text="Compared Q2 and Q3 performance"
+            />
+
+            <TraceItem
+              number="03"
+              text="Calculated margin movement and cost changes"
+            />
+
+            <TraceItem
+              number="04"
+              text="Ranked cost drivers by increase"
+            />
+          </>
+
+        ) : (
+
+          <>
+            <TraceItem
+              number="01"
+              text="Natural-language intent identified"
+            />
+
+            <TraceItem
+              number="02"
+              text="Governed metric selected"
+            />
+
+            <TraceItem
+              number="03"
+              text="Warehouse result retrieved"
+            />
+
+            <TraceItem
+              number="04"
+              text="Result formatted for explanation"
+            />
+          </>
+
+        )}
+
+      </div>
+
+    </div>
+
+  </div>
 )}
 
             {/* ================================================= */}
@@ -762,6 +921,60 @@ function TrustRow({ label, value }) {
       <span className="text-[10px] text-white/60">
         {value}
       </span>
+
+    </div>
+  );
+}
+
+function parseDriver(driver) {
+  const match = driver.match(
+    /^(.*?):\s*\$?([\d,]+(?:\.\d+)?)\s*change$/i
+  );
+
+  if (!match) {
+    return {
+      name: driver,
+      value: "",
+      percentage: 30,
+    };
+  }
+
+  const numericValue = Number(
+    match[2].replace(/,/g, "")
+  );
+
+  const percentage = Math.min(
+    100,
+    Math.max(
+      10,
+      (numericValue / 180000) * 100
+    )
+  );
+
+  return {
+    name: match[1],
+    value: `$${numericValue.toLocaleString("en-US", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    })}`,
+    percentage,
+  };
+}
+
+
+function TraceItem({ number, text }) {
+  return (
+    <div className="flex items-center gap-3 rounded-xl border border-white/[0.05] bg-white/[0.02] px-3 py-3">
+
+      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-indigo-400/[0.08] text-[9px] text-indigo-300">
+        {number}
+      </span>
+
+      <span className="text-[10px] leading-5 text-white/35">
+        {text}
+      </span>
+
+      <span className="ml-auto h-1.5 w-1.5 rounded-full bg-emerald-400/60" />
 
     </div>
   );
