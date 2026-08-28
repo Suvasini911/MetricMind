@@ -3,6 +3,7 @@ import sqlite3
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi import FastAPI, Query
 
 
 # =========================================================
@@ -102,22 +103,44 @@ def health():
 # =========================================================
 
 @app.get("/api/analytics/regional-revenue")
-def regional_revenue():
-
+def regional_revenue(
+    region: str | None = None,
+    year: int | None = None,
+    quarter: str | None = None,
+):
     connection = get_connection()
 
     try:
-
         cursor = connection.cursor()
 
-        cursor.execute("""
+        query = """
             SELECT
                 region,
                 ROUND(SUM(revenue), 2) AS revenue
             FROM corporate_sales_raw
+            WHERE 1=1
+        """
+
+        params = []
+
+        if region:
+            query += " AND LOWER(region) = LOWER(?)"
+            params.append(region)
+
+        if year:
+            query += " AND year = ?"
+            params.append(year)
+
+        if quarter:
+            query += " AND quarter = ?"
+            params.append(quarter)
+
+        query += """
             GROUP BY region
             ORDER BY revenue DESC
-        """)
+        """
+
+        cursor.execute(query, params)
 
         rows = cursor.fetchall()
 
@@ -128,7 +151,6 @@ def regional_revenue():
         }
 
     finally:
-
         connection.close()
 
 
@@ -137,15 +159,15 @@ def regional_revenue():
 # =========================================================
 
 @app.get("/api/analytics/regional-performance")
-def regional_performance():
-
+def regional_performance(
+    region: str | None = None,
+):
     connection = get_connection()
 
     try:
-
         cursor = connection.cursor()
 
-        cursor.execute("""
+        query = """
             SELECT
                 region,
                 ROUND(total_revenue, 2) AS total_revenue,
@@ -154,8 +176,19 @@ def regional_performance():
                 ROUND(profit_margin * 100, 2) AS profit_margin,
                 total_orders
             FROM regional_performance
+        """
+
+        params = []
+
+        if region:
+            query += " WHERE LOWER(region) = LOWER(?)"
+            params.append(region)
+
+        query += """
             ORDER BY total_revenue DESC
-        """)
+        """
+
+        cursor.execute(query, params)
 
         rows = cursor.fetchall()
 
@@ -165,24 +198,24 @@ def regional_performance():
         }
 
     finally:
-
         connection.close()
-
 
 # =========================================================
 # MONTHLY PERFORMANCE
 # =========================================================
 
 @app.get("/api/analytics/monthly-performance")
-def monthly_performance():
-
+def monthly_performance(
+    region: str | None = None,
+    year: int | None = None,
+    quarter: str | None = None,
+):
     connection = get_connection()
 
     try:
-
         cursor = connection.cursor()
 
-        cursor.execute("""
+        query = """
             SELECT
                 year,
                 quarter,
@@ -193,8 +226,28 @@ def monthly_performance():
                 ROUND(profit_margin * 100, 2) AS profit_margin,
                 total_orders
             FROM monthly_performance
+            WHERE 1=1
+        """
+
+        params = []
+
+        if region:
+            query += " AND LOWER(region) = LOWER(?)"
+            params.append(region)
+
+        if year:
+            query += " AND year = ?"
+            params.append(year)
+
+        if quarter:
+            query += " AND quarter = ?"
+            params.append(quarter)
+
+        query += """
             ORDER BY year, month
-        """)
+        """
+
+        cursor.execute(query, params)
 
         rows = cursor.fetchall()
 
@@ -204,7 +257,6 @@ def monthly_performance():
         }
 
     finally:
-
         connection.close()
 
 
@@ -213,15 +265,17 @@ def monthly_performance():
 # =========================================================
 
 @app.get("/api/analytics/cost-drivers")
-def cost_drivers():
-
+def cost_drivers(
+    region: str | None = None,
+    year: int | None = None,
+    quarter: str | None = None,
+):
     connection = get_connection()
 
     try:
-
         cursor = connection.cursor()
 
-        cursor.execute("""
+        query = """
             SELECT
                 region,
                 year,
@@ -234,8 +288,28 @@ def cost_drivers():
                 ROUND(total_profit, 2) AS total_profit,
                 ROUND(profit_margin * 100, 2) AS profit_margin
             FROM cost_driver_analysis
+            WHERE 1=1
+        """
+
+        params = []
+
+        if region:
+            query += " AND LOWER(region) = LOWER(?)"
+            params.append(region)
+
+        if year:
+            query += " AND year = ?"
+            params.append(year)
+
+        if quarter:
+            query += " AND quarter = ?"
+            params.append(quarter)
+
+        query += """
             ORDER BY year, quarter, region
-        """)
+        """
+
+        cursor.execute(query, params)
 
         rows = cursor.fetchall()
 
@@ -245,7 +319,6 @@ def cost_drivers():
         }
 
     finally:
-
         connection.close()
 
 

@@ -9,7 +9,11 @@ export default function AnalyticsPage() {
   const [performance, setPerformance] = useState([]);
   const [monthly, setMonthly] = useState([]);
   const [drivers, setDrivers] = useState([]);
-  const [loading, setLoading] = useState(true);
+const [loading, setLoading] = useState(true);
+
+const [selectedRegion, setSelectedRegion] = useState("");
+const [selectedYear, setSelectedYear] = useState("");
+const [selectedQuarter, setSelectedQuarter] = useState("");
 
   useEffect(() => {
     async function loadAnalytics() {
