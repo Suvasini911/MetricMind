@@ -9,26 +9,114 @@ export default function AnalyticsPage() {
   const [performance, setPerformance] = useState([]);
   const [monthly, setMonthly] = useState([]);
   const [drivers, setDrivers] = useState([]);
-const [loading, setLoading] = useState(true);
 
-const [selectedRegion, setSelectedRegion] = useState("");
-const [selectedYear, setSelectedYear] = useState("");
-const [selectedQuarter, setSelectedQuarter] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  const [selectedRegion, setSelectedRegion] = useState("");
+  const [selectedYear, setSelectedYear] = useState("");
+  const [selectedQuarter, setSelectedQuarter] = useState("");
 
   useEffect(() => {
     async function loadAnalytics() {
       try {
-        const [
-          regionalResponse,
-          performanceResponse,
-          monthlyResponse,
-          driversResponse,
-        ] = await Promise.all([
-          fetch(`${API}/api/analytics/regional-revenue`),
-          fetch(`${API}/api/analytics/regional-performance`),
-          fetch(`${API}/api/analytics/monthly-performance`),
-          fetch(`${API}/api/analytics/cost-drivers`),
-        ]);
+        setLoading(true);
+        setError("");
+
+        const params = new URLSearchParams();
+
+        if (selectedRegion) {
+          params.set("region", selectedRegion);
+        }
+
+        if (selectedYear) {
+          params.set("year", selectedYear);
+        }
+
+        if (selectedQuarter) {
+          params.set("quarter", selectedQuarter);
+        }
+
+        const regionalParams = new URLSearchParams();
+
+if (selectedRegion) {
+  regionalParams.set("region", selectedRegion);
+}
+
+if (selectedYear) {
+  regionalParams.set("year", selectedYear);
+}
+
+if (selectedQuarter) {
+  regionalParams.set("quarter", selectedQuarter);
+}
+
+const regionalSuffix = regionalParams.toString()
+  ? `?${regionalParams.toString()}`
+  : "";
+
+
+const performanceSuffix = selectedRegion
+  ? `?region=${encodeURIComponent(selectedRegion)}`
+  : "";
+
+
+const monthlyParams = new URLSearchParams();
+
+if (selectedYear) {
+  monthlyParams.set("year", selectedYear);
+}
+
+if (selectedQuarter) {
+  monthlyParams.set("quarter", selectedQuarter);
+}
+
+const monthlySuffix = monthlyParams.toString()
+  ? `?${monthlyParams.toString()}`
+  : "";
+
+
+const driversParams = new URLSearchParams();
+
+if (selectedRegion) {
+  driversParams.set("region", selectedRegion);
+}
+
+if (selectedYear) {
+  driversParams.set("year", selectedYear);
+}
+
+if (selectedQuarter) {
+  driversParams.set("quarter", selectedQuarter);
+}
+
+const driversSuffix = driversParams.toString()
+  ? `?${driversParams.toString()}`
+  : "";
+
+
+const [
+  regionalResponse,
+  performanceResponse,
+  monthlyResponse,
+  driversResponse,
+] = await Promise.all([
+  fetch(
+    `${API}/api/analytics/regional-revenue${regionalSuffix}`
+  ),
+
+  fetch(
+    `${API}/api/analytics/regional-performance${performanceSuffix}`
+  ),
+
+  fetch(
+    `${API}/api/analytics/monthly-performance${monthlySuffix}`
+  ),
+
+  fetch(
+    `${API}/api/analytics/cost-drivers${driversSuffix}`
+  ),
+]);
 
         if (
           !regionalResponse.ok ||
@@ -47,70 +135,92 @@ const [selectedQuarter, setSelectedQuarter] = useState("");
         setRegional(
           Array.isArray(regionalData)
             ? regionalData
-            : regionalData.data || regionalData.results || []
+            : regionalData?.data || regionalData?.results || []
         );
 
         setPerformance(
           Array.isArray(performanceData)
             ? performanceData
-            : performanceData.data || performanceData.results || []
+            : performanceData?.data || performanceData?.results || []
         );
 
         setMonthly(
           Array.isArray(monthlyData)
             ? monthlyData
-            : monthlyData.data || monthlyData.results || []
+            : monthlyData?.data || monthlyData?.results || []
         );
 
         setDrivers(
           Array.isArray(driversData)
             ? driversData
-            : driversData.data || driversData.results || []
+            : driversData?.data || driversData?.results || []
         );
       } catch (error) {
         console.error("Analytics loading error:", error);
+
+        setRegional([]);
+        setPerformance([]);
+        setMonthly([]);
+        setDrivers([]);
+
+        setError("Unable to load analytics data.");
       } finally {
         setLoading(false);
       }
     }
 
     loadAnalytics();
-  }, []);
+  }, [selectedRegion, selectedYear, selectedQuarter]);
 
-  const totalRevenue = regional.reduce(
-    (sum, item) =>
-      sum + Number(item.revenue ?? item.total_revenue ?? 0),
+  /*
+   * ---------------------------------------------------------
+   * FILTERED KPI CALCULATIONS
+   * ---------------------------------------------------------
+   *
+   * Cost-driver data is the correct source for the selected
+   * region/year/quarter because it contains:
+   *
+   * region
+   * year
+   * quarter
+   * revenue
+   * costs
+   * profit
+   * margin
+   */
+
+  const totalRevenue = drivers.reduce(
+    (sum, item) => sum + Number(item.total_revenue ?? 0),
     0
   );
 
-  const totalProfit = performance.reduce(
-    (sum, item) =>
-      sum + Number(item.profit ?? item.total_profit ?? 0),
+  const totalProfit = drivers.reduce(
+    (sum, item) => sum + Number(item.total_profit ?? 0),
     0
   );
 
-  const totalOrders = performance.reduce(
-    (sum, item) =>
-      sum + Number(item.orders ?? item.total_orders ?? 0),
-    0
-  );
+  const totalOrders = monthly.reduce(
+  (sum, item) => sum + Number(item.total_orders ?? 0),
+  0
+);
 
   const averageMargin =
-    totalRevenue > 0
-      ? (totalProfit / totalRevenue) * 100
-      : 0;
+    totalRevenue > 0 ? (totalProfit / totalRevenue) * 100 : 0;
+
+  /*
+   * ---------------------------------------------------------
+   * COST DRIVERS
+   * ---------------------------------------------------------
+   */
 
   const costTotals = drivers.reduce(
-    (acc, item) => ({
-      material:
-        acc.material + Number(item.material_cost ?? 0),
+    (acc, item) => {
+      acc.material += Number(item.material_cost ?? 0);
+      acc.shipping += Number(item.shipping_cost ?? 0);
+      acc.marketing += Number(item.marketing_cost ?? 0);
 
-      shipping:
-        acc.shipping + Number(item.shipping_cost ?? 0),
-
-      marketing:
-        acc.marketing + Number(item.marketing_cost ?? 0),
-    }),
+      return acc;
+    },
     {
       material: 0,
       shipping: 0,
@@ -133,10 +243,24 @@ const [selectedQuarter, setSelectedQuarter] = useState("");
     },
   ];
 
+  /*
+   * ---------------------------------------------------------
+   * FILTER DESCRIPTION
+   * ---------------------------------------------------------
+   */
+
+  const filterDescription = [
+    selectedRegion || "All regions",
+    selectedYear || "All years",
+    selectedQuarter || "All quarters",
+  ].join(" • ");
+
   return (
     <main className="analytics-page">
 
-      {/* HEADER */}
+      {/* =====================================================
+          HEADER
+      ====================================================== */}
 
       <header className="analytics-header">
         <div>
@@ -162,14 +286,108 @@ const [selectedQuarter, setSelectedQuarter] = useState("");
       </header>
 
 
-      {/* KPI GRID */}
+      {/* =====================================================
+          FILTER BAR
+      ====================================================== */}
+
+      <section className="analytics-filters">
+
+        <div className="filter-group">
+          <label>REGION</label>
+
+          <select
+            value={selectedRegion}
+            onChange={(event) =>
+              setSelectedRegion(event.target.value)
+            }
+          >
+            <option value="">All regions</option>
+            <option value="Asia">Asia</option>
+            <option value="Europe">Europe</option>
+            <option value="North America">
+              North America
+            </option>
+          </select>
+        </div>
+
+
+        <div className="filter-group">
+          <label>YEAR</label>
+
+          <select
+            value={selectedYear}
+            onChange={(event) =>
+              setSelectedYear(event.target.value)
+            }
+          >
+            <option value="">All years</option>
+            <option value="2025">2025</option>
+          </select>
+        </div>
+
+
+        <div className="filter-group">
+          <label>QUARTER</label>
+
+          <select
+            value={selectedQuarter}
+            onChange={(event) =>
+              setSelectedQuarter(event.target.value)
+            }
+          >
+            <option value="">All quarters</option>
+            <option value="Q1">Q1</option>
+            <option value="Q2">Q2</option>
+            <option value="Q3">Q3</option>
+            <option value="Q4">Q4</option>
+          </select>
+        </div>
+
+
+        <button
+          className="filter-reset"
+          onClick={() => {
+            setSelectedRegion("");
+            setSelectedYear("");
+            setSelectedQuarter("");
+          }}
+        >
+          Reset
+        </button>
+
+      </section>
+
+
+      {/* =====================================================
+          ERROR
+      ====================================================== */}
+
+      {error && (
+        <div
+          style={{
+            marginBottom: "16px",
+            padding: "12px 14px",
+            border: "1px solid rgba(255,80,80,0.25)",
+            borderRadius: "10px",
+            color: "#ff7b7b",
+            fontSize: "12px",
+          }}
+        >
+          {error}
+        </div>
+      )}
+
+
+      {/* =====================================================
+          KPI GRID
+      ====================================================== */}
 
       <section className="kpi-grid">
 
         <KPI
           label="Total Revenue"
           value={formatMoney(totalRevenue)}
-          detail="Across all regions"
+          detail={filterDescription}
         />
 
         <KPI
@@ -193,15 +411,24 @@ const [selectedQuarter, setSelectedQuarter] = useState("");
       </section>
 
 
-      {/* DASHBOARD */}
+      {/* =====================================================
+          DASHBOARD
+      ====================================================== */}
 
       <section className="dashboard-grid">
 
-        {/* REGIONAL REVENUE */}
+
+        {/* ===================================================
+            REGIONAL REVENUE
+        ==================================================== */}
 
         <Panel
           title="Regional revenue"
-          subtitle="Revenue contribution by business region"
+          subtitle={
+            selectedRegion
+              ? `Revenue for ${selectedRegion}`
+              : "Revenue contribution by business region"
+          }
         >
           {loading ? (
             <Loading />
@@ -243,6 +470,7 @@ const [selectedQuarter, setSelectedQuarter] = useState("");
 
                     <div className="bar-label">
                       <span>{name}</span>
+
                       <strong>
                         {formatMoney(value)}
                       </strong>
@@ -266,11 +494,17 @@ const [selectedQuarter, setSelectedQuarter] = useState("");
         </Panel>
 
 
-        {/* REGIONAL PERFORMANCE */}
+        {/* ===================================================
+            REGIONAL PERFORMANCE
+        ==================================================== */}
 
         <Panel
           title="Regional performance"
-          subtitle="Profitability and operating health"
+          subtitle={
+            selectedRegion
+              ? `Overall performance for ${selectedRegion}`
+              : "Profitability and operating health"
+          }
         >
           {loading ? (
             <Loading />
@@ -284,6 +518,7 @@ const [selectedQuarter, setSelectedQuarter] = useState("");
                 <span>PROFIT</span>
                 <span>MARGIN</span>
               </div>
+
 
               {performance.map((item, index) => {
                 const region =
@@ -330,11 +565,19 @@ const [selectedQuarter, setSelectedQuarter] = useState("");
         </Panel>
 
 
-        {/* PERFORMANCE TIMELINE */}
+        {/* ===================================================
+            PERFORMANCE TIMELINE
+        ==================================================== */}
 
         <Panel
           title="Performance timeline"
-          subtitle="Monthly governed performance"
+          subtitle={
+            selectedYear || selectedQuarter
+              ? `Monthly governed performance • ${
+                  selectedYear || "All years"
+                } • ${selectedQuarter || "All quarters"}`
+              : "Monthly governed performance"
+          }
           wide
         >
           {loading ? (
@@ -345,11 +588,19 @@ const [selectedQuarter, setSelectedQuarter] = useState("");
             <div className="timeline">
 
               {monthly.map((item, index) => {
-                const label =
-                  item.month ??
-                  item.period ??
-                  item.date ??
-                  `Period ${index + 1}`;
+                const monthNumber = Number(
+                  item.month ?? index + 1
+                );
+
+                const quarter =
+                  item.quarter ??
+                  getQuarterFromMonth(monthNumber);
+
+                const year =
+                  item.year ??
+                  "";
+
+                const label = `${year} ${quarter} / M${monthNumber}`;
 
                 const revenue = Number(
                   item.revenue ??
@@ -380,16 +631,19 @@ const [selectedQuarter, setSelectedQuarter] = useState("");
                 return (
                   <div
                     className="timeline-item"
-                    key={`${label}-${index}`}
+                    key={`${year}-${monthNumber}-${index}`}
                   >
 
                     <div className="timeline-top">
+
                       <span>{label}</span>
 
                       <strong>
                         {formatMoney(revenue)}
                       </strong>
+
                     </div>
+
 
                     <div className="timeline-track">
 
@@ -401,6 +655,7 @@ const [selectedQuarter, setSelectedQuarter] = useState("");
                       />
 
                     </div>
+
 
                     <small>
                       Profit {formatMoney(profit)}
@@ -415,11 +670,19 @@ const [selectedQuarter, setSelectedQuarter] = useState("");
         </Panel>
 
 
-        {/* COST DRIVERS */}
+        {/* ===================================================
+            COST DRIVERS
+        ==================================================== */}
 
         <Panel
           title="Cost driver monitor"
-          subtitle="Tracked operating cost movements"
+          subtitle={
+            selectedRegion ||
+            selectedYear ||
+            selectedQuarter
+              ? `Tracked costs • ${filterDescription}`
+              : "Tracked operating cost movements"
+          }
         >
           {loading ? (
             <Loading />
@@ -460,7 +723,9 @@ const [selectedQuarter, setSelectedQuarter] = useState("");
       </section>
 
 
-      {/* GOVERNANCE */}
+      {/* =====================================================
+          GOVERNANCE
+      ====================================================== */}
 
       <section className="governance-strip">
 
@@ -488,11 +753,15 @@ const [selectedQuarter, setSelectedQuarter] = useState("");
 }
 
 
-/* =========================
+/* ===========================================================
    KPI
-========================= */
+=========================================================== */
 
-function KPI({ label, value, detail }) {
+function KPI({
+  label,
+  value,
+  detail,
+}) {
   return (
     <div className="kpi">
 
@@ -513,9 +782,9 @@ function KPI({ label, value, detail }) {
 }
 
 
-/* =========================
+/* ===========================================================
    PANEL
-========================= */
+=========================================================== */
 
 function Panel({
   title,
@@ -533,8 +802,11 @@ function Panel({
       <div className="panel-header">
 
         <div>
+
           <h2>{title}</h2>
+
           <p>{subtitle}</p>
+
         </div>
 
         <span className="panel-dot"></span>
@@ -550,9 +822,9 @@ function Panel({
 }
 
 
-/* =========================
+/* ===========================================================
    LOADING
-========================= */
+=========================================================== */
 
 function Loading() {
   return (
@@ -563,9 +835,9 @@ function Loading() {
 }
 
 
-/* =========================
+/* ===========================================================
    EMPTY
-========================= */
+=========================================================== */
 
 function Empty() {
   return (
@@ -576,12 +848,12 @@ function Empty() {
 }
 
 
-/* =========================
+/* ===========================================================
    FORMAT MONEY
-========================= */
+=========================================================== */
 
 function formatMoney(value) {
-  if (!Number.isFinite(value)) {
+  if (!Number.isFinite(Number(value))) {
     return "$0";
   }
 
@@ -589,20 +861,43 @@ function formatMoney(value) {
     style: "currency",
     currency: "USD",
     maximumFractionDigits: 0,
-  }).format(value);
+  }).format(Number(value));
 }
 
 
-/* =========================
+/* ===========================================================
    FORMAT NUMBER
-========================= */
+=========================================================== */
 
 function formatNumber(value) {
-  if (!Number.isFinite(value)) {
+  if (!Number.isFinite(Number(value))) {
     return "0";
   }
 
   return new Intl.NumberFormat("en-US").format(
-    Math.round(value)
+    Math.round(Number(value))
   );
+}
+
+
+/* ===========================================================
+   QUARTER FROM MONTH
+=========================================================== */
+
+function getQuarterFromMonth(month) {
+  const value = Number(month);
+
+  if (value <= 3) {
+    return "Q1";
+  }
+
+  if (value <= 6) {
+    return "Q2";
+  }
+
+  if (value <= 9) {
+    return "Q3";
+  }
+
+  return "Q4";
 }
