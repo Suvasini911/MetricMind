@@ -1,44 +1,20 @@
-# MetricMind
+# SupplyPrescript
 
-MetricMind is an Agentic Semantic BI Engine designed to provide governed, transparent, and trustworthy conversational business analytics.
+Week 1 Completed
 
-## Project Objective
+# React + Vite
 
-MetricMind allows users to ask business questions in natural language and receive analytical answers through a governed semantic layer rather than unrestricted raw SQL generation.
+This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
 
-## Core Architecture
+Currently, two official plugins are available:
 
-User
-↓
-Conversational BI Interface
-↓
-AI Orchestrator
-↓
-Semantic Layer
-↓
-Governed Metrics
-↓
-Analytical Database
-↓
-Structured Results
-↓
-Visualization + Explanation
+- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
+- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
 
-## Planned Features
+## React Compiler
 
-- Governed business metrics
-- Semantic dimensions and measures
-- Natural-language analytical queries
-- AI orchestration
-- Multi-step analytical reasoning
-- Dynamic visualizations
-- Query governance
-- SQL/API transparency
-- Enterprise analytics dashboard
+The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
 
-## Development Plan
+## Expanding the Oxlint configuration
 
-- Week 1 — Data Modeling & Chat Foundation
-- Week 2 — Semantic Layer & Agentic AI
-- Week 3 — Governance, Reasoning & Visualization
-- Week 4 — Transparency, Refinement & Finalization
+If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and Oxlint's TypeScript related rules in your project.
