@@ -121,7 +121,7 @@ export default function Home() {
       <div className="relative flex min-h-screen">
 
         {/* ================================================= */}
-        {/* SIDEBAR */}
+        {/* SIDEBAR BUTTON */}
         {/* ================================================= */}
 
         <aside className="hidden w-[250px] shrink-0 border-r border-white/[0.07] bg-[#090b10] lg:flex lg:flex-col">
@@ -202,7 +202,7 @@ export default function Home() {
 
           </div>
 
-          {/* System status */}
+          {/* SYSTEM STATUS */}
           <div className="border-t border-white/[0.07] p-4">
 
             <div className="rounded-xl border border-emerald-400/10 bg-emerald-400/[0.025] p-3">
