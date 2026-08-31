@@ -3,7 +3,10 @@ import sqlite3
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi import FastAPI, Query
+
+from backend.agent import analyze_question
+from backend.intent_engine import parse_question
+from backend.semantic_layer import list_metrics, list_dimensions
 
 
 # =========================================================
@@ -29,6 +32,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "http://localhost:3000",
+        "http://127.0.0.1:3000",
     ],
     allow_credentials=True,
     allow_methods=["*"],
@@ -41,7 +45,6 @@ app.add_middleware(
 # =========================================================
 
 def get_connection():
-
     if not DATABASE.exists():
         raise HTTPException(
             status_code=500,
@@ -60,7 +63,6 @@ def get_connection():
 
 @app.get("/")
 def root():
-
     return {
         "name": "MetricMind API",
         "status": "operational",
@@ -74,11 +76,9 @@ def root():
 
 @app.get("/api/health")
 def health():
-
     connection = get_connection()
 
     try:
-
         cursor = connection.cursor()
 
         cursor.execute(
@@ -94,7 +94,6 @@ def health():
         }
 
     finally:
-
         connection.close()
 
 
@@ -200,13 +199,13 @@ def regional_performance(
     finally:
         connection.close()
 
+
 # =========================================================
 # MONTHLY PERFORMANCE
 # =========================================================
 
 @app.get("/api/analytics/monthly-performance")
 def monthly_performance(
-    region: str | None = None,
     year: int | None = None,
     quarter: str | None = None,
 ):
@@ -230,10 +229,6 @@ def monthly_performance(
         """
 
         params = []
-
-        if region:
-            query += " AND LOWER(region) = LOWER(?)"
-            params.append(region)
 
         if year:
             query += " AND year = ?"
@@ -323,16 +318,40 @@ def cost_drivers(
 
 
 # =========================================================
+# SEMANTIC LAYER
+# =========================================================
+
+@app.get("/api/semantic/metrics")
+def semantic_metrics():
+    return {
+        "metrics": list_metrics(),
+        "dimensions": list_dimensions(),
+    }
+
+
+@app.get("/api/semantic/parse")
+def semantic_parse(question: str):
+    return parse_question(question)
+
+
+# =========================================================
+# GOVERNED AGENT
+# =========================================================
+
+@app.get("/api/agent/analyze")
+def agent_analyze(question: str):
+    return analyze_question(question)
+
+
+# =========================================================
 # SIMPLE NATURAL LANGUAGE QUERY
 # =========================================================
 
 @app.get("/api/query")
 def query(question: str):
-
     connection = get_connection()
 
     try:
-
         cursor = connection.cursor()
 
         normalized = question.lower().strip()
@@ -345,7 +364,6 @@ def query(question: str):
             "european sales" in normalized
             or "europe sales" in normalized
         ):
-
             cursor.execute("""
                 SELECT
                     ROUND(SUM(revenue), 2) AS revenue
@@ -375,7 +393,6 @@ def query(question: str):
                 and "q3" in normalized
             )
         ):
-
             cursor.execute("""
                 SELECT
                     ROUND(SUM(revenue), 2) AS revenue
@@ -404,7 +421,6 @@ def query(question: str):
         }
 
     finally:
-
         connection.close()
 
 
@@ -414,11 +430,9 @@ def query(question: str):
 
 @app.get("/api/analytics/margin-root-cause")
 def margin_root_cause(region: str = "Europe"):
-
     connection = get_connection()
 
     try:
-
         cursor = connection.cursor()
 
         cursor.execute("""
@@ -440,7 +454,6 @@ def margin_root_cause(region: str = "Europe"):
         rows = cursor.fetchall()
 
         if len(rows) < 2:
-
             return {
                 "status": "insufficient_data",
                 "region": region,
@@ -459,7 +472,6 @@ def margin_root_cause(region: str = "Europe"):
         q3 = data.get("Q3")
 
         if not q2 or not q3:
-
             return {
                 "status": "insufficient_data",
                 "region": region,
@@ -520,7 +532,7 @@ def margin_root_cause(region: str = "Europe"):
 
         drivers.sort(
             key=lambda item: item["change"],
-            reverse=True
+            reverse=True,
         )
 
         top_driver = drivers[0]
@@ -530,7 +542,6 @@ def margin_root_cause(region: str = "Europe"):
         # -------------------------------------------------
 
         if margin_change < 0:
-
             summary = (
                 f"{region} margin declined from "
                 f"{q2_margin * 100:.2f}% in Q2 to "
@@ -538,9 +549,7 @@ def margin_root_cause(region: str = "Europe"):
                 f"The largest increase among tracked "
                 f"cost drivers was {top_driver['name']}."
             )
-
         else:
-
             summary = (
                 f"{region} margin did not decline between "
                 f"Q2 and Q3. Margin changed from "
@@ -549,45 +558,38 @@ def margin_root_cause(region: str = "Europe"):
             )
 
         return {
-
             "status": "verified",
-
             "region": region,
-
             "comparison": {
                 "previous_period": "Q2",
                 "current_period": "Q3",
             },
-
             "metrics": {
                 "q2_margin": round(
                     q2_margin * 100,
-                    2
+                    2,
                 ),
                 "q3_margin": round(
                     q3_margin * 100,
-                    2
+                    2,
                 ),
                 "margin_change": round(
                     margin_change * 100,
-                    2
+                    2,
                 ),
             },
-
             "cost_drivers": [
                 {
                     "name": driver["name"],
                     "change": round(
                         driver["change"],
-                        2
+                        2,
                     ),
                 }
                 for driver in drivers
             ],
-
             "summary": summary,
         }
 
     finally:
-
         connection.close()
