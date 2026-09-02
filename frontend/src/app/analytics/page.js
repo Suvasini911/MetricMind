@@ -23,106 +23,98 @@ export default function AnalyticsPage() {
   const [agentError, setAgentError] = useState("");
   const [agentHistory, setAgentHistory] = useState([]);
 
+  const [marginAnalysis, setMarginAnalysis] = useState(null);
+  const [marginLoading, setMarginLoading] = useState(false);
+  const [marginError, setMarginError] = useState("");
+
+  /*
+   * ---------------------------------------------------------
+   * LOAD DASHBOARD ANALYTICS
+   * ---------------------------------------------------------
+   */
+
   useEffect(() => {
     async function loadAnalytics() {
       try {
         setLoading(true);
         setError("");
 
-        const params = new URLSearchParams();
+        const regionalParams = new URLSearchParams();
 
         if (selectedRegion) {
-          params.set("region", selectedRegion);
+          regionalParams.set("region", selectedRegion);
         }
 
         if (selectedYear) {
-          params.set("year", selectedYear);
+          regionalParams.set("year", selectedYear);
         }
 
         if (selectedQuarter) {
-          params.set("quarter", selectedQuarter);
+          regionalParams.set("quarter", selectedQuarter);
         }
 
-        const regionalParams = new URLSearchParams();
+        const regionalSuffix = regionalParams.toString()
+          ? `?${regionalParams.toString()}`
+          : "";
 
-if (selectedRegion) {
-  regionalParams.set("region", selectedRegion);
-}
+        const performanceSuffix = selectedRegion
+          ? `?region=${encodeURIComponent(selectedRegion)}`
+          : "";
 
-if (selectedYear) {
-  regionalParams.set("year", selectedYear);
-}
+        const monthlyParams = new URLSearchParams();
 
-if (selectedQuarter) {
-  regionalParams.set("quarter", selectedQuarter);
-}
+        if (selectedYear) {
+          monthlyParams.set("year", selectedYear);
+        }
 
-const regionalSuffix = regionalParams.toString()
-  ? `?${regionalParams.toString()}`
-  : "";
+        if (selectedQuarter) {
+          monthlyParams.set("quarter", selectedQuarter);
+        }
 
+        const monthlySuffix = monthlyParams.toString()
+          ? `?${monthlyParams.toString()}`
+          : "";
 
-const performanceSuffix = selectedRegion
-  ? `?region=${encodeURIComponent(selectedRegion)}`
-  : "";
+        const driversParams = new URLSearchParams();
 
+        if (selectedRegion) {
+          driversParams.set("region", selectedRegion);
+        }
 
-const monthlyParams = new URLSearchParams();
+        if (selectedYear) {
+          driversParams.set("year", selectedYear);
+        }
 
-if (selectedYear) {
-  monthlyParams.set("year", selectedYear);
-}
+        if (selectedQuarter) {
+          driversParams.set("quarter", selectedQuarter);
+        }
 
-if (selectedQuarter) {
-  monthlyParams.set("quarter", selectedQuarter);
-}
+        const driversSuffix = driversParams.toString()
+          ? `?${driversParams.toString()}`
+          : "";
 
-const monthlySuffix = monthlyParams.toString()
-  ? `?${monthlyParams.toString()}`
-  : "";
+        const [
+          regionalResponse,
+          performanceResponse,
+          monthlyResponse,
+          driversResponse,
+        ] = await Promise.all([
+          fetch(
+            `${API}/api/analytics/regional-revenue${regionalSuffix}`
+          ),
 
+          fetch(
+            `${API}/api/analytics/regional-performance${performanceSuffix}`
+          ),
 
-const driversParams = new URLSearchParams();
+          fetch(
+            `${API}/api/analytics/monthly-performance${monthlySuffix}`
+          ),
 
-if (selectedRegion) {
-  driversParams.set("region", selectedRegion);
-}
-
-if (selectedYear) {
-  driversParams.set("year", selectedYear);
-}
-
-if (selectedQuarter) {
-  driversParams.set("quarter", selectedQuarter);
-}
-
-const driversSuffix = driversParams.toString()
-  ? `?${driversParams.toString()}`
-  : "";
-
-
-const [
-  regionalResponse,
-  performanceResponse,
-  monthlyResponse,
-  driversResponse,
-] = await Promise.all([
-  fetch(
-    `${API}/api/analytics/regional-revenue${regionalSuffix}`
-  ),
-
-  fetch(
-    `${API}/api/analytics/regional-performance${performanceSuffix}`
-  ),
-
-  fetch(
-    `${API}/api/analytics/monthly-performance${monthlySuffix}`
-  ),
-
-  fetch(
-    `${API}/api/analytics/cost-drivers${driversSuffix}`
-  ),
-]);
+          fetch(
+            `${API}/api/analytics/cost-drivers${driversSuffix}`
+          ),
+        ]);
 
         if (
           !regionalResponse.ok ||
@@ -141,28 +133,39 @@ const [
         setRegional(
           Array.isArray(regionalData)
             ? regionalData
-            : regionalData?.data || regionalData?.results || []
+            : regionalData?.data ||
+                regionalData?.results ||
+                []
         );
 
         setPerformance(
           Array.isArray(performanceData)
             ? performanceData
-            : performanceData?.data || performanceData?.results || []
+            : performanceData?.data ||
+                performanceData?.results ||
+                []
         );
 
         setMonthly(
           Array.isArray(monthlyData)
             ? monthlyData
-            : monthlyData?.data || monthlyData?.results || []
+            : monthlyData?.data ||
+                monthlyData?.results ||
+                []
         );
 
         setDrivers(
           Array.isArray(driversData)
             ? driversData
-            : driversData?.data || driversData?.results || []
+            : driversData?.data ||
+                driversData?.results ||
+                []
         );
       } catch (error) {
-        console.error("Analytics loading error:", error);
+        console.error(
+          "Analytics loading error:",
+          error
+        );
 
         setRegional([]);
         setPerformance([]);
@@ -176,106 +179,216 @@ const [
     }
 
     loadAnalytics();
-  }, [selectedRegion, selectedYear, selectedQuarter]);
+  }, [
+    selectedRegion,
+    selectedYear,
+    selectedQuarter,
+  ]);
 
-    async function runAgent(questionOverride = agentQuestion) {
-  const rawQuestion = questionOverride.trim();
+  /*
+   * ---------------------------------------------------------
+   * GOVERNED QUERY AGENT
+   * ---------------------------------------------------------
+   */
 
-  if (!rawQuestion) {
-    setAgentError("Enter a business question first.");
-    setAgentResult(null);
-    return;
-  }
+  async function runAgent(
+    questionOverride = agentQuestion
+  ) {
+    const rawQuestion =
+      questionOverride.trim();
 
-  const resolvedQuestion = resolveFollowUpQuestion(
-    rawQuestion,
-    agentHistory
-  );
-
-  try {
-    setAgentLoading(true);
-    setAgentError("");
-    setAgentResult(null);
-
-    const response = await fetch(
-      `${API}/api/agent/analyze?question=${encodeURIComponent(
-        resolvedQuestion
-      )}`
-    );
-
-    const data = await response.json();
-
-    if (!response.ok) {
-      throw new Error("Agent request failed");
-    }
-
-    if (data.status !== "verified") {
+    if (!rawQuestion) {
       setAgentError(
-        data.message ||
-          data.reason ||
-          "This question could not be verified by the governance layer."
+        "Enter a business question first."
       );
 
-      setAgentResult(data);
+      setAgentResult(null);
       return;
     }
 
-    setAgentResult(data);
+    const resolvedQuestion =
+      resolveFollowUpQuestion(
+        rawQuestion,
+        agentHistory
+      );
 
-    setAgentHistory((previous) => [
-      {
-        question: rawQuestion,
-        result: data,
-      },
-      ...previous.filter(
-        (item) => item.question !== rawQuestion
-      ),
-    ].slice(0, 5));
-  } catch (error) {
-    console.error("Agent error:", error);
+    try {
+      setAgentLoading(true);
+      setAgentError("");
+      setAgentResult(null);
 
-    setAgentError(
-      "Unable to analyze the question. Make sure the backend is running."
-    );
-  } finally {
-    setAgentLoading(false);
+      const response = await fetch(
+        `${API}/api/agent/analyze?question=${encodeURIComponent(
+          resolvedQuestion
+        )}`
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          "Agent request failed"
+        );
+      }
+
+      if (data.status !== "verified") {
+        setAgentError(
+          data.message ||
+            data.reason ||
+            "This question could not be verified by the governance layer."
+        );
+
+        setAgentResult(data);
+        return;
+      }
+
+      setAgentResult(data);
+
+      setAgentHistory((previous) => [
+        {
+          question: rawQuestion,
+          result: data,
+        },
+
+        ...previous.filter(
+          (item) =>
+            item.question !== rawQuestion
+        ),
+      ].slice(0, 5));
+    } catch (error) {
+      console.error(
+        "Agent error:",
+        error
+      );
+
+      setAgentError(
+        "Unable to analyze the question. Make sure the backend is running."
+      );
+    } finally {
+      setAgentLoading(false);
+    }
   }
-}
+
+  /*
+   * ---------------------------------------------------------
+   * MARGIN INTELLIGENCE
+   *
+   * IMPORTANT:
+   * This useEffect is NOT nested inside another useEffect.
+   * ---------------------------------------------------------
+   */
+
+  useEffect(() => {
+    async function loadMarginAnalysis() {
+      if (
+        !selectedRegion ||
+        !selectedYear ||
+        !selectedQuarter
+      ) {
+        setMarginAnalysis(null);
+        setMarginError("");
+        return;
+      }
+
+      try {
+        setMarginLoading(true);
+        setMarginError("");
+
+        const response = await fetch(
+          `${API}/api/analytics/margin-root-cause?region=${encodeURIComponent(
+            selectedRegion
+          )}&year=${encodeURIComponent(
+            selectedYear
+          )}&quarter=${encodeURIComponent(
+            selectedQuarter
+          )}`
+        );
+
+        const data =
+          await response.json();
+
+        if (!response.ok) {
+          throw new Error(
+            "Margin analysis request failed"
+          );
+        }
+
+        if (data.status !== "verified") {
+          setMarginAnalysis(null);
+
+          setMarginError(
+            data.message ||
+              "Margin analysis requires a complete comparison period."
+          );
+
+          return;
+        }
+
+        setMarginAnalysis(data);
+      } catch (error) {
+        console.error(
+          "Margin analysis error:",
+          error
+        );
+
+        setMarginAnalysis(null);
+
+        setMarginError(
+          "Unable to load margin intelligence. Make sure the backend is running."
+        );
+      } finally {
+        setMarginLoading(false);
+      }
+    }
+
+    loadMarginAnalysis();
+  }, [
+    selectedRegion,
+    selectedYear,
+    selectedQuarter,
+  ]);
 
   /*
    * ---------------------------------------------------------
    * FILTERED KPI CALCULATIONS
    * ---------------------------------------------------------
-   *
-   * Cost-driver data is the correct source for the selected
-   * region/year/quarter because it contains:
-   *
-   * region
-   * year
-   * quarter
-   * revenue
-   * costs
-   * profit
-   * margin
    */
 
-  const totalRevenue = drivers.reduce(
-    (sum, item) => sum + Number(item.total_revenue ?? 0),
+  const totalRevenue =
+    drivers.reduce(
+      (sum, item) =>
+        sum +
+        Number(
+          item.total_revenue ?? 0
+        ),
+      0
+    );
+
+  const totalProfit =
+    drivers.reduce(
+      (sum, item) =>
+        sum +
+        Number(
+          item.total_profit ?? 0
+        ),
+      0
+    );
+
+  const totalOrders =
+  monthly.reduce(
+    (sum, item) =>
+      sum +
+      Number(
+        item.total_orders ?? 0
+      ),
     0
   );
-
-  const totalProfit = drivers.reduce(
-    (sum, item) => sum + Number(item.total_profit ?? 0),
-    0
-  );
-
-  const totalOrders = monthly.reduce(
-  (sum, item) => sum + Number(item.total_orders ?? 0),
-  0
-);
 
   const averageMargin =
-    totalRevenue > 0 ? (totalProfit / totalRevenue) * 100 : 0;
+    totalRevenue > 0
+      ? (totalProfit / totalRevenue) *
+        100
+      : 0;
 
   /*
    * ---------------------------------------------------------
@@ -283,46 +396,56 @@ const [
    * ---------------------------------------------------------
    */
 
-  const costTotals = drivers.reduce(
-    (acc, item) => {
-      acc.material += Number(item.material_cost ?? 0);
-      acc.shipping += Number(item.shipping_cost ?? 0);
-      acc.marketing += Number(item.marketing_cost ?? 0);
+  const costTotals =
+    drivers.reduce(
+      (acc, item) => {
+        acc.material += Number(
+          item.material_cost ?? 0
+        );
 
-      return acc;
-    },
-    {
-      material: 0,
-      shipping: 0,
-      marketing: 0,
-    }
-  );
+        acc.shipping += Number(
+          item.shipping_cost ?? 0
+        );
+
+        acc.marketing += Number(
+          item.marketing_cost ?? 0
+        );
+
+        return acc;
+      },
+      {
+        material: 0,
+        shipping: 0,
+        marketing: 0,
+      }
+    );
 
   const costDrivers = [
     {
       name: "Material Cost",
       value: costTotals.material,
     },
+
     {
       name: "Shipping Cost",
       value: costTotals.shipping,
     },
+
     {
       name: "Marketing Cost",
       value: costTotals.marketing,
     },
   ];
 
-  /*
-   * ---------------------------------------------------------
-   * FILTER DESCRIPTION
-   * ---------------------------------------------------------
-   */
-
   const filterDescription = [
-    selectedRegion || "All regions",
-    selectedYear || "All years",
-    selectedQuarter || "All quarters",
+    selectedRegion ||
+      "All regions",
+
+    selectedYear ||
+      "All years",
+
+    selectedQuarter ||
+      "All quarters",
   ].join(" • ");
 
   return (
@@ -333,26 +456,33 @@ const [
       ====================================================== */}
 
       <header className="analytics-header">
+
         <div>
+
           <div className="eyebrow">
             METRICMIND / ANALYTICS
           </div>
 
           <h1>
             Business
-            <span> intelligence.</span>
+            <span>
+              {" "}intelligence.
+            </span>
           </h1>
 
           <p>
-            Explore governed performance metrics across
-            regions, periods and cost drivers.
+            Explore governed performance
+            metrics across regions, periods
+            and cost drivers.
           </p>
+
         </div>
 
         <div className="status-pill">
           <span></span>
           LIVE DATA
         </div>
+
       </header>
 
 
@@ -363,54 +493,106 @@ const [
       <section className="analytics-filters">
 
         <div className="filter-group">
-          <label>REGION</label>
+
+          <label>
+            REGION
+          </label>
 
           <select
             value={selectedRegion}
             onChange={(event) =>
-              setSelectedRegion(event.target.value)
+              setSelectedRegion(
+                event.target.value
+              )
             }
           >
-            <option value="">All regions</option>
-            <option value="Asia">Asia</option>
-            <option value="Europe">Europe</option>
+
+            <option value="">
+              All regions
+            </option>
+
+            <option value="Asia">
+              Asia
+            </option>
+
+            <option value="Europe">
+              Europe
+            </option>
+
             <option value="North America">
               North America
             </option>
+
           </select>
+
         </div>
 
 
         <div className="filter-group">
-          <label>YEAR</label>
+
+          <label>
+            YEAR
+          </label>
 
           <select
             value={selectedYear}
             onChange={(event) =>
-              setSelectedYear(event.target.value)
+              setSelectedYear(
+                event.target.value
+              )
             }
           >
-            <option value="">All years</option>
-            <option value="2025">2025</option>
+
+            <option value="">
+              All years
+            </option>
+
+            <option value="2025">
+              2025
+            </option>
+
           </select>
+
         </div>
 
 
         <div className="filter-group">
-          <label>QUARTER</label>
+
+          <label>
+            QUARTER
+          </label>
 
           <select
             value={selectedQuarter}
             onChange={(event) =>
-              setSelectedQuarter(event.target.value)
+              setSelectedQuarter(
+                event.target.value
+              )
             }
           >
-            <option value="">All quarters</option>
-            <option value="Q1">Q1</option>
-            <option value="Q2">Q2</option>
-            <option value="Q3">Q3</option>
-            <option value="Q4">Q4</option>
+
+            <option value="">
+              All quarters
+            </option>
+
+            <option value="Q1">
+              Q1
+            </option>
+
+            <option value="Q2">
+              Q2
+            </option>
+
+            <option value="Q3">
+              Q3
+            </option>
+
+            <option value="Q4">
+              Q4
+            </option>
+
           </select>
+
         </div>
 
 
@@ -427,14 +609,17 @@ const [
 
       </section>
 
-          {/* =====================================================
+
+      {/* =====================================================
           GOVERNED QUERY COPILOT
-      ======================================================*/}
+      ====================================================== */}
 
       <section className="copilot-panel">
 
         <div className="copilot-header">
+
           <div>
+
             <div className="copilot-eyebrow">
               GOVERNED QUERY COPILOT
             </div>
@@ -444,17 +629,22 @@ const [
             </h2>
 
             <p>
-              Ask a business question in natural language.
-              MetricMind validates the metric, filters and
-              calculation before returning an answer.
+              Ask a business question in
+              natural language. MetricMind
+              validates the metric, filters and
+              calculation before returning an
+              answer.
             </p>
+
           </div>
 
           <div className="copilot-status">
             <span className="green-dot"></span>
             CERTIFIED AGENT
           </div>
+
         </div>
+
 
         <div className="copilot-input-row">
 
@@ -462,7 +652,9 @@ const [
             type="text"
             value={agentQuestion}
             onChange={(event) =>
-              setAgentQuestion(event.target.value)
+              setAgentQuestion(
+                event.target.value
+              )
             }
             onKeyDown={(event) => {
               if (event.key === "Enter") {
@@ -474,13 +666,18 @@ const [
 
           <button
             className="copilot-button"
-            onClick={() => runAgent()}
+            onClick={() =>
+              runAgent()
+            }
             disabled={agentLoading}
           >
-            {agentLoading ? "Analyzing..." : "Analyze"}
+            {agentLoading
+              ? "Analyzing..."
+              : "Analyze"}
           </button>
 
         </div>
+
 
         <div className="copilot-examples">
 
@@ -526,49 +723,77 @@ const [
 
         </div>
 
+
         {agentError && (
           <div className="copilot-error">
             {agentError}
           </div>
         )}
 
+
         {agentHistory.length > 0 && (
-  <div className="copilot-history">
-    <div className="copilot-history-title">
-      RECENT QUESTIONS
-    </div>
+          <div className="copilot-history">
 
-    <button
-  className="copilot-history-clear"
-  onClick={() => setAgentHistory([])}
->
-  Clear
-</button>
+            <div className="copilot-history-title">
+              RECENT QUESTIONS
+            </div>
 
-    {agentHistory.map((item, index) => (
-      <button
-        key={`${item.question}-${index}`}
-        className="copilot-history-item"
-        onClick={() => {
-  setAgentQuestion(item.question);
-  setAgentResult(null);
-  setAgentError("");
-  runAgent(item.question);
-}}
-      >
-        <span>{item.question}</span>
-        <strong>
-          {formatAgentValue(item.result.value, item.result.metric)}
-        </strong>
-      </button>
-    ))}
-  </div>
-)}
+            <button
+              className="copilot-history-clear"
+              onClick={() =>
+                setAgentHistory([])
+              }
+            >
+              Clear
+            </button>
 
-        {agentResult?.status === "verified" && (
+            {agentHistory.map(
+              (item, index) => (
+                <button
+                  key={`${item.question}-${index}`}
+                  className="copilot-history-item"
+                  onClick={() => {
+                    setAgentQuestion(
+                      item.question
+                    );
+
+                    setAgentResult(
+                      item.result
+                    );
+
+                    setAgentError("");
+
+                    runAgent(
+                      item.question
+                    );
+                  }}
+                >
+
+                  <span>
+                    {item.question}
+                  </span>
+
+                  <strong>
+                    {formatAgentValue(
+                      item.result.value,
+                      item.result.metric
+                    )}
+                  </strong>
+
+                </button>
+              )
+            )}
+
+          </div>
+        )}
+
+
+        {agentResult?.status ===
+          "verified" && (
           <div className="copilot-result">
 
             <div className="copilot-answer">
+
               <span className="copilot-result-label">
                 VERIFIED ANSWER
               </span>
@@ -582,31 +807,57 @@ const [
 
               <p>
                 {agentResult.metric} for{" "}
-                {formatAgentFilters(agentResult.filters)}
+                {formatAgentFilters(
+                  agentResult.filters
+                )}
               </p>
+
             </div>
+
 
             <div className="copilot-evidence">
 
               <div className="evidence-item">
-                <span>METRIC</span>
-                <strong>{agentResult.metric}</strong>
+                <span>
+                  METRIC
+                </span>
+
+                <strong>
+                  {agentResult.metric}
+                </strong>
               </div>
 
-              <div className="evidence-item">
-                <span>SOURCE</span>
-                <strong>{agentResult.source}</strong>
-              </div>
 
               <div className="evidence-item">
-                <span>FORMULA</span>
-                <strong>{agentResult.formula}</strong>
+                <span>
+                  SOURCE
+                </span>
+
+                <strong>
+                  {agentResult.source}
+                </strong>
               </div>
 
+
               <div className="evidence-item">
-                <span>GOVERNANCE</span>
+                <span>
+                  FORMULA
+                </span>
+
+                <strong>
+                  {agentResult.formula}
+                </strong>
+              </div>
+
+
+              <div className="evidence-item">
+                <span>
+                  GOVERNANCE
+                </span>
+
                 <strong className="verified-text">
-                  ✓ {agentResult.governance}
+                  ✓{" "}
+                  {agentResult.governance}
                 </strong>
               </div>
 
@@ -627,7 +878,8 @@ const [
           style={{
             marginBottom: "16px",
             padding: "12px 14px",
-            border: "1px solid rgba(255,80,80,0.25)",
+            border:
+              "1px solid rgba(255,80,80,0.25)",
             borderRadius: "10px",
             color: "#ff7b7b",
             fontSize: "12px",
@@ -646,29 +898,327 @@ const [
 
         <KPI
           label="Total Revenue"
-          value={formatMoney(totalRevenue)}
+          value={formatMoney(
+            totalRevenue
+          )}
           detail={filterDescription}
         />
 
         <KPI
           label="Total Profit"
-          value={formatMoney(totalProfit)}
+          value={formatMoney(
+            totalProfit
+          )}
           detail="Governed warehouse"
         />
 
         <KPI
           label="Average Margin"
-          value={`${averageMargin.toFixed(1)}%`}
+          value={`${averageMargin.toFixed(
+            1
+          )}%`}
           detail="Profit / Revenue"
         />
 
         <KPI
           label="Total Orders"
-          value={formatNumber(totalOrders)}
+          value={formatNumber(
+            totalOrders
+          )}
           detail="Recorded orders"
         />
 
       </section>
+
+
+      {/* =====================================================
+          MARGIN INTELLIGENCE
+      ====================================================== */}
+
+      {selectedRegion &&
+        selectedYear &&
+        selectedQuarter && (
+
+        <section className="margin-intelligence-panel">
+
+          <div className="margin-intelligence-header">
+
+            <div>
+
+              <div className="margin-intelligence-eyebrow">
+                MARGIN INTELLIGENCE
+              </div>
+
+              <h2>
+                Why did margin move?
+              </h2>
+
+              <p>
+                Governed
+                quarter-over-quarter
+                analysis for{" "}
+                {selectedRegion} •{" "}
+                {selectedQuarter}{" "}
+                {selectedYear}.
+              </p>
+
+            </div>
+
+            <div className="margin-governance-badge">
+              <span></span>
+              VERIFIED
+            </div>
+
+          </div>
+
+
+          {marginLoading ? (
+
+            <div className="margin-loading">
+              Analyzing margin movement...
+            </div>
+
+          ) : marginError ? (
+
+            <div className="margin-error">
+              {marginError}
+            </div>
+
+          ) : marginAnalysis ? (
+
+            <>
+
+              <div className="margin-summary">
+
+                <div className="margin-summary-main">
+
+                  <span className="margin-label">
+                    MARGIN CHANGE
+                  </span>
+
+                  <strong
+                    className={
+                      marginAnalysis
+                        .metrics
+                        .margin_change_pp < 0
+                        ? "margin-negative"
+                        : "margin-positive"
+                    }
+                  >
+                    {marginAnalysis
+                      .metrics
+                      .margin_change_pp > 0
+                      ? "+"
+                      : ""}
+
+                    {marginAnalysis
+                      .metrics
+                      .margin_change_pp
+                      .toFixed(2)}{" "}
+                    pp
+                  </strong>
+
+                  <p>
+                    {
+                      marginAnalysis
+                        .comparison
+                        .previous_period
+                    }{" "}
+                    {
+                      marginAnalysis
+                        .metrics
+                        .previous_margin
+                    .toFixed(2)
+                    }%
+                    {" → "}
+                    {
+                      marginAnalysis
+                        .comparison
+                        .current_period
+                    }{" "}
+                    {
+                      marginAnalysis
+                        .metrics
+                        .current_margin
+                    .toFixed(2)
+                    }%
+                  </p>
+
+                </div>
+
+
+                <div className="margin-summary-driver">
+
+                  <span className="margin-label">
+                    TOP COST PRESSURE
+                  </span>
+
+                  <strong>
+                    {
+                      marginAnalysis
+                        .top_driver
+                        .name
+                    }
+                  </strong>
+
+                  <p>
+                    {
+                      marginAnalysis
+                        .top_driver
+                        .rate_change_pp > 0
+                      ? "+"
+                      : ""
+                    }
+
+                    {
+                      marginAnalysis
+                        .top_driver
+                        .rate_change_pp
+                        .toFixed(2)
+                    }{" "}
+                    pp cost-rate movement
+                  </p>
+
+                </div>
+
+              </div>
+
+
+              <div className="margin-driver-grid">
+
+                {marginAnalysis
+                  .cost_drivers
+                  .map((driver) => (
+
+                  <div
+                    className="margin-driver-card"
+                    key={driver.name}
+                  >
+
+                    <div className="margin-driver-top">
+
+                      <span>
+                        {driver.name}
+                      </span>
+
+                      <strong
+                        className={
+                          driver.rate_change_pp >
+                          0
+                            ? "driver-pressure"
+                            : "driver-improvement"
+                        }
+                      >
+                        {driver.rate_change_pp >
+                        0
+                          ? "+"
+                          : ""}
+
+                        {
+                          driver.rate_change_pp
+                            .toFixed(2)
+                        }{" "}
+                        pp
+                      </strong>
+
+                    </div>
+
+
+                    <div className="margin-rate-row">
+
+                      <span>
+                        {
+                          driver.previous_rate
+                            .toFixed(2)
+                        }%
+                      </span>
+
+                      <span>
+                        →
+                      </span>
+
+                      <span>
+                        {
+                          driver.current_rate
+                            .toFixed(2)
+                        }%
+                      </span>
+
+                    </div>
+
+
+                    <div className="margin-cost-change">
+
+                      Cost change{" "}
+
+                      <strong>
+                        {formatMoney(
+                          driver.cost_change
+                        )}
+                      </strong>
+
+                    </div>
+
+                  </div>
+
+                ))}
+
+              </div>
+
+
+              <div className="margin-explanation">
+
+                <span>
+                  GOVERNED FINDING
+                </span>
+
+                <p>
+                  {marginAnalysis.summary}
+                </p>
+
+              </div>
+
+
+              <div className="margin-evidence">
+
+                <span>
+                  SOURCE:{" "}
+                  {
+                    marginAnalysis
+                      .governance
+                      .source
+                  }
+                </span>
+
+                <span>
+                  CALCULATION:{" "}
+                  {
+                    marginAnalysis
+                      .governance
+                      .calculation
+                  }
+                </span>
+
+                <span>
+                  ✓ Governance passed
+                </span>
+
+              </div>
+
+            </>
+
+          ) : (
+
+            <div className="margin-loading">
+              Select a region, year and
+              quarter to analyze margin
+              movement.
+            </div>
+
+          )}
+
+        </section>
+      )}
 
 
       {/* =====================================================
@@ -690,67 +1240,94 @@ const [
               : "Revenue contribution by business region"
           }
         >
+
           {loading ? (
+
             <Loading />
+
           ) : regional.length === 0 ? (
+
             <Empty />
+
           ) : (
+
             <div className="bar-list">
 
-              {regional.map((item, index) => {
-                const name =
-                  item.region ??
-                  item.name ??
-                  `Region ${index + 1}`;
+              {regional.map(
+                (item, index) => {
 
-                const value = Number(
-                  item.revenue ??
-                  item.total_revenue ??
-                  0
-                );
+                  const name =
+                    item.region ??
+                    item.name ??
+                    `Region ${
+                      index + 1
+                    }`;
 
-                const max = Math.max(
-                  ...regional.map((x) =>
+                  const value =
                     Number(
-                      x.revenue ??
-                      x.total_revenue ??
-                      0
-                    )
-                  ),
-                  1
-                );
+                      item.revenue ??
+                        item.total_revenue ??
+                        0
+                    );
 
-                const width = (value / max) * 100;
+                  const max =
+                    Math.max(
+                      ...regional.map(
+                        (x) =>
+                          Number(
+                            x.revenue ??
+                              x.total_revenue ??
+                              0
+                          )
+                      ),
+                      1
+                    );
 
-                return (
-                  <div
-                    className="bar-row"
-                    key={`${name}-${index}`}
-                  >
+                  const width =
+                    (value / max) * 100;
 
-                    <div className="bar-label">
-                      <span>{name}</span>
+                  return (
 
-                      <strong>
-                        {formatMoney(value)}
-                      </strong>
+                    <div
+                      className="bar-row"
+                      key={`${name}-${index}`}
+                    >
+
+                      <div className="bar-label">
+
+                        <span>
+                          {name}
+                        </span>
+
+                        <strong>
+                          {formatMoney(
+                            value
+                          )}
+                        </strong>
+
+                      </div>
+
+                      <div className="bar-track">
+
+                        <div
+                          className="bar-fill"
+                          style={{
+                            width: `${width}%`,
+                          }}
+                        />
+
+                      </div>
+
                     </div>
 
-                    <div className="bar-track">
-                      <div
-                        className="bar-fill"
-                        style={{
-                          width: `${width}%`,
-                        }}
-                      />
-                    </div>
-
-                  </div>
-                );
-              })}
+                  );
+                }
+              )}
 
             </div>
+
           )}
+
         </Panel>
 
 
@@ -766,62 +1343,99 @@ const [
               : "Profitability and operating health"
           }
         >
+
           {loading ? (
+
             <Loading />
+
           ) : performance.length === 0 ? (
+
             <Empty />
+
           ) : (
+
             <div className="table">
 
               <div className="table-head">
-                <span>REGION</span>
-                <span>PROFIT</span>
-                <span>MARGIN</span>
+
+                <span>
+                  REGION
+                </span>
+
+                <span>
+                  PROFIT
+                </span>
+
+                <span>
+                  MARGIN
+                </span>
+
               </div>
 
 
-              {performance.map((item, index) => {
-                const region =
-                  item.region ??
-                  item.name ??
-                  `Region ${index + 1}`;
+              {performance.map(
+                (item, index) => {
 
-                const profit = Number(
-                  item.profit ??
-                  item.total_profit ??
-                  0
-                );
+                  const region =
+                    item.region ??
+                    item.name ??
+                    `Region ${
+                      index + 1
+                    }`;
 
-                const margin = Number(
-                  item.margin ??
-                  item.profit_margin ??
-                  0
-                );
+                  const profit =
+                    Number(
+                      item.profit ??
+                        item.total_profit ??
+                        0
+                    );
 
-                return (
-                  <div
-                    className="table-row"
-                    key={`${region}-${index}`}
-                  >
+                  const margin =
+                    Number(
+                      item.margin ??
+                        item.profit_margin ??
+                        0
+                    );
 
-                    <span>{region}</span>
+                  return (
 
-                    <strong>
-                      {formatMoney(profit)}
-                    </strong>
+                    <div
+                      className="table-row"
+                      key={`${region}-${index}`}
+                    >
 
-                    <span className="margin">
-                      {margin > 1
-                        ? `${margin.toFixed(1)}%`
-                        : `${(margin * 100).toFixed(1)}%`}
-                    </span>
+                      <span>
+                        {region}
+                      </span>
 
-                  </div>
-                );
-              })}
+                      <strong>
+                        {formatMoney(
+                          profit
+                        )}
+                      </strong>
+
+                      <span className="margin">
+                        {margin > 1
+                          ? `${margin.toFixed(
+                              1
+                            )}%`
+                          : `${(
+                              margin * 100
+                            ).toFixed(
+                              1
+                            )}%`}
+                      </span>
+
+                    </div>
+
+                  );
+                }
+              )}
 
             </div>
+
           )}
+
         </Panel>
 
 
@@ -832,101 +1446,136 @@ const [
         <Panel
           title="Performance timeline"
           subtitle={
-            selectedYear || selectedQuarter
+            selectedYear ||
+            selectedQuarter
               ? `Monthly governed performance • ${
-                  selectedYear || "All years"
-                } • ${selectedQuarter || "All quarters"}`
+                  selectedYear ||
+                  "All years"
+                } • ${
+                  selectedQuarter ||
+                  "All quarters"
+                }`
               : "Monthly governed performance"
           }
           wide
         >
+
           {loading ? (
+
             <Loading />
+
           ) : monthly.length === 0 ? (
+
             <Empty />
+
           ) : (
+
             <div className="timeline">
 
-              {monthly.map((item, index) => {
-                const monthNumber = Number(
-                  item.month ?? index + 1
-                );
+              {monthly.map(
+                (item, index) => {
 
-                const quarter =
-                  item.quarter ??
-                  getQuarterFromMonth(monthNumber);
-
-                const year =
-                  item.year ??
-                  "";
-
-                const label = `${year} ${quarter} / M${monthNumber}`;
-
-                const revenue = Number(
-                  item.revenue ??
-                  item.total_revenue ??
-                  0
-                );
-
-                const profit = Number(
-                  item.profit ??
-                  item.total_profit ??
-                  0
-                );
-
-                const maxRevenue = Math.max(
-                  ...monthly.map((x) =>
+                  const monthNumber =
                     Number(
-                      x.revenue ??
-                      x.total_revenue ??
-                      0
-                    )
-                  ),
-                  1
-                );
+                      item.month ??
+                        index + 1
+                    );
 
-                const width =
-                  (revenue / maxRevenue) * 100;
+                  const quarter =
+                    item.quarter ??
+                    getQuarterFromMonth(
+                      monthNumber
+                    );
 
-                return (
-                  <div
-                    className="timeline-item"
-                    key={`${year}-${monthNumber}-${index}`}
-                  >
+                  const year =
+                    item.year ?? "";
 
-                    <div className="timeline-top">
+                  const label =
+                    `${year} ${quarter} / M${monthNumber}`;
 
-                      <span>{label}</span>
+                  const revenue =
+                    Number(
+                      item.revenue ??
+                        item.total_revenue ??
+                        0
+                    );
 
-                      <strong>
-                        {formatMoney(revenue)}
-                      </strong>
+                  const profit =
+                    Number(
+                      item.profit ??
+                        item.total_profit ??
+                        0
+                    );
+
+                  const maxRevenue =
+                    Math.max(
+                      ...monthly.map(
+                        (x) =>
+                          Number(
+                            x.revenue ??
+                              x.total_revenue ??
+                              0
+                          )
+                      ),
+                      1
+                    );
+
+                  const width =
+                    (revenue /
+                      maxRevenue) *
+                    100;
+
+                  return (
+
+                    <div
+                      className="timeline-item"
+                      key={`${year}-${monthNumber}-${index}`}
+                    >
+
+                      <div className="timeline-top">
+
+                        <span>
+                          {label}
+                        </span>
+
+                        <strong>
+                          {formatMoney(
+                            revenue
+                          )}
+                        </strong>
+
+                      </div>
+
+
+                      <div className="timeline-track">
+
+                        <div
+                          className="timeline-revenue"
+                          style={{
+                            width: `${width}%`,
+                          }}
+                        />
+
+                      </div>
+
+
+                      <small>
+                        Profit{" "}
+                        {formatMoney(
+                          profit
+                        )}
+                      </small>
 
                     </div>
 
-
-                    <div className="timeline-track">
-
-                      <div
-                        className="timeline-revenue"
-                        style={{
-                          width: `${width}%`,
-                        }}
-                      />
-
-                    </div>
-
-
-                    <small>
-                      Profit {formatMoney(profit)}
-                    </small>
-
-                  </div>
-                );
-              })}
+                  );
+                }
+              )}
 
             </div>
+
           )}
+
         </Panel>
 
 
@@ -944,40 +1593,59 @@ const [
               : "Tracked operating cost movements"
           }
         >
+
           {loading ? (
+
             <Loading />
+
           ) : drivers.length === 0 ? (
+
             <Empty />
+
           ) : (
+
             <div className="driver-list">
 
-              {costDrivers.map((driver, index) => (
-                <div
-                  className="driver"
-                  key={driver.name}
-                >
+              {costDrivers.map(
+                (driver, index) => (
 
-                  <div>
+                  <div
+                    className="driver"
+                    key={driver.name}
+                  >
 
-                    <span className="driver-number">
-                      {String(index + 1).padStart(2, "0")}
-                    </span>
+                    <div>
 
-                    <span>
-                      {driver.name}
-                    </span>
+                      <span className="driver-number">
+                        {String(
+                          index + 1
+                        ).padStart(
+                          2,
+                          "0"
+                        )}
+                      </span>
+
+                      <span>
+                        {driver.name}
+                      </span>
+
+                    </div>
+
+                    <strong>
+                      {formatMoney(
+                        driver.value
+                      )}
+                    </strong>
 
                   </div>
 
-                  <strong>
-                    {formatMoney(driver.value)}
-                  </strong>
-
-                </div>
-              ))}
+                )
+              )}
 
             </div>
+
           )}
+
         </Panel>
 
       </section>
@@ -990,20 +1658,35 @@ const [
       <section className="governance-strip">
 
         <div>
+
           <span className="green-dot"></span>
+
           Governed analytics
+
         </div>
 
-        <div>
-          Semantic layer <strong>v1.0</strong>
-        </div>
 
         <div>
-          Warehouse <strong>Connected</strong>
+          Semantic layer{" "}
+          <strong>
+            v1.0
+          </strong>
         </div>
 
+
         <div>
-          Data status <strong>Verified</strong>
+          Warehouse{" "}
+          <strong>
+            Connected
+          </strong>
+        </div>
+
+
+        <div>
+          Data status{" "}
+          <strong>
+            Verified
+          </strong>
         </div>
 
       </section>
@@ -1023,6 +1706,7 @@ function KPI({
   detail,
 }) {
   return (
+
     <div className="kpi">
 
       <div className="kpi-label">
@@ -1038,6 +1722,7 @@ function KPI({
       </div>
 
     </div>
+
   );
 }
 
@@ -1053,6 +1738,7 @@ function Panel({
   wide,
 }) {
   return (
+
     <section
       className={`panel ${
         wide ? "wide" : ""
@@ -1063,9 +1749,13 @@ function Panel({
 
         <div>
 
-          <h2>{title}</h2>
+          <h2>
+            {title}
+          </h2>
 
-          <p>{subtitle}</p>
+          <p>
+            {subtitle}
+          </p>
 
         </div>
 
@@ -1073,11 +1763,13 @@ function Panel({
 
       </div>
 
+
       <div className="panel-content">
         {children}
       </div>
 
     </section>
+
   );
 }
 
@@ -1113,15 +1805,22 @@ function Empty() {
 =========================================================== */
 
 function formatMoney(value) {
-  if (!Number.isFinite(Number(value))) {
+  if (
+    !Number.isFinite(
+      Number(value)
+    )
+  ) {
     return "$0";
   }
 
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-    maximumFractionDigits: 0,
-  }).format(Number(value));
+  return new Intl.NumberFormat(
+    "en-US",
+    {
+      style: "currency",
+      currency: "USD",
+      maximumFractionDigits: 0,
+    }
+  ).format(Number(value));
 }
 
 
@@ -1130,12 +1829,20 @@ function formatMoney(value) {
 =========================================================== */
 
 function formatNumber(value) {
-  if (!Number.isFinite(Number(value))) {
+  if (
+    !Number.isFinite(
+      Number(value)
+    )
+  ) {
     return "0";
   }
 
-  return new Intl.NumberFormat("en-US").format(
-    Math.round(Number(value))
+  return new Intl.NumberFormat(
+    "en-US"
+  ).format(
+    Math.round(
+      Number(value)
+    )
   );
 }
 
@@ -1144,8 +1851,11 @@ function formatNumber(value) {
    QUARTER FROM MONTH
 =========================================================== */
 
-function getQuarterFromMonth(month) {
-  const value = Number(month);
+function getQuarterFromMonth(
+  month
+) {
+  const value =
+    Number(month);
 
   if (value <= 3) {
     return "Q1";
@@ -1162,38 +1872,74 @@ function getQuarterFromMonth(month) {
   return "Q4";
 }
 
-function formatAgentValue(value, metric) {
-  const numericValue = Number(value);
 
-  if (!Number.isFinite(numericValue)) {
+/* ===========================================================
+   FORMAT AGENT VALUE
+=========================================================== */
+
+function formatAgentValue(
+  value,
+  metric
+) {
+  const numericValue =
+    Number(value);
+
+  if (
+    !Number.isFinite(
+      numericValue
+    )
+  ) {
     return "—";
   }
 
-  if (metric === "Profit Margin") {
-    return `${numericValue.toFixed(2)}%`;
+  if (
+    metric ===
+    "Profit Margin"
+  ) {
+    return `${numericValue.toFixed(
+      2
+    )}%`;
   }
 
-  if (metric === "Orders") {
-    return formatNumber(numericValue);
+  if (
+    metric === "Orders"
+  ) {
+    return formatNumber(
+      numericValue
+    );
   }
 
-  return formatMoney(numericValue);
+  return formatMoney(
+    numericValue
+  );
 }
 
 
-function formatAgentFilters(filters = {}) {
+/* ===========================================================
+   FORMAT AGENT FILTERS
+=========================================================== */
+
+function formatAgentFilters(
+  filters = {}
+) {
   const parts = [];
 
   if (filters.region) {
-    parts.push(filters.region);
+    parts.push(
+      filters.region
+    );
   }
 
   if (filters.year) {
-    parts.push(filters.year);
+    parts.push(
+      filters.year
+    );
   }
 
   if (filters.quarter) {
-    parts.push(filters.quarter);
+    parts.push(
+      filters.quarter
+    );
   }
 
   return parts.length > 0
@@ -1201,58 +1947,104 @@ function formatAgentFilters(filters = {}) {
     : "selected period";
 }
 
-function resolveFollowUpQuestion(question, history) {
-  const trimmed = question.trim();
 
-  if (!trimmed || history.length === 0) {
+/* ===========================================================
+   FOLLOW-UP QUESTION CONTEXT
+=========================================================== */
+
+function resolveFollowUpQuestion(
+  question,
+  history
+) {
+  const trimmed =
+    question.trim();
+
+  if (
+    !trimmed ||
+    history.length === 0
+  ) {
     return trimmed;
   }
 
-  const latest = history[0];
+  const latest =
+    history[0];
 
-  if (!latest?.result?.filters) {
+  if (
+    !latest?.result?.filters
+  ) {
     return trimmed;
   }
 
-  const lower = trimmed.toLowerCase();
+  const lower =
+    trimmed.toLowerCase();
 
   const hasRegion =
     lower.includes("asia") ||
     lower.includes("europe") ||
-    lower.includes("north america");
+    lower.includes(
+      "north america"
+    );
 
-  const hasYear = /\b20\d{2}\b/.test(trimmed);
+  const hasYear =
+    /\b20\d{2}\b/.test(
+      trimmed
+    );
 
   const hasQuarter =
-    /\bq[1-4]\b/i.test(trimmed) ||
-    lower.includes("first quarter") ||
-    lower.includes("second quarter") ||
-    lower.includes("third quarter") ||
-    lower.includes("fourth quarter");
+    /\bq[1-4]\b/i.test(
+      trimmed
+    ) ||
+    lower.includes(
+      "first quarter"
+    ) ||
+    lower.includes(
+      "second quarter"
+    ) ||
+    lower.includes(
+      "third quarter"
+    ) ||
+    lower.includes(
+      "fourth quarter"
+    );
 
-  if (hasRegion || hasYear || hasQuarter) {
+  if (
+    hasRegion ||
+    hasYear ||
+    hasQuarter
+  ) {
     return trimmed;
   }
 
-  const filters = latest.result.filters;
+  const filters =
+    latest.result.filters;
 
   const contextParts = [];
 
   if (filters.region) {
-    contextParts.push(`region ${filters.region}`);
+    contextParts.push(
+      `region ${filters.region}`
+    );
   }
 
   if (filters.year) {
-    contextParts.push(`year ${filters.year}`);
+    contextParts.push(
+      `year ${filters.year}`
+    );
   }
 
   if (filters.quarter) {
-    contextParts.push(`quarter ${filters.quarter}`);
+    contextParts.push(
+      `quarter ${filters.quarter}`
+    );
   }
 
-  if (contextParts.length === 0) {
+  if (
+    contextParts.length === 0
+  ) {
     return trimmed;
   }
 
-  return `${trimmed} for ${contextParts.join(", ")}`;
+  return `${trimmed} for ${contextParts.join(
+    ", "
+  )}`;
 }

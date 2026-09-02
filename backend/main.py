@@ -429,166 +429,322 @@ def query(question: str):
 # =========================================================
 
 @app.get("/api/analytics/margin-root-cause")
-def margin_root_cause(region: str = "Europe"):
+def margin_root_cause(
+    region: str = "Europe",
+    year: int = 2025,
+    quarter: str = "Q3",
+):
+    """
+    Governed margin root-cause analysis.
+
+    Compares the requested quarter with the immediately
+    preceding quarter using the raw warehouse table.
+
+    No LLM is used to invent causes. Every driver is derived
+    from warehouse calculations.
+    """
+
+    quarter_order = {
+        "Q1": ("Q4", year - 1),
+        "Q2": ("Q1", year),
+        "Q3": ("Q2", year),
+        "Q4": ("Q3", year),
+    }
+
+    quarter = quarter.upper()
+
+    if quarter not in quarter_order:
+        raise HTTPException(
+            status_code=400,
+            detail="Quarter must be Q1, Q2, Q3, or Q4.",
+        )
+
+    previous_quarter, previous_year = quarter_order[quarter]
+
     connection = get_connection()
 
     try:
         cursor = connection.cursor()
 
-        cursor.execute("""
+        query = """
             SELECT
+                year,
                 quarter,
-                SUM(total_revenue) AS revenue,
-                SUM(material_cost) AS material_cost,
-                SUM(shipping_cost) AS shipping_cost,
-                SUM(marketing_cost) AS marketing_cost,
-                SUM(total_cost) AS total_cost,
-                SUM(total_profit) AS profit
-            FROM cost_driver_analysis
+                ROUND(SUM(revenue), 2) AS revenue,
+                ROUND(SUM(material_cost), 2) AS material_cost,
+                ROUND(SUM(shipping_cost), 2) AS shipping_cost,
+                ROUND(SUM(marketing_cost), 2) AS marketing_cost,
+                ROUND(SUM(total_cost), 2) AS total_cost,
+                ROUND(SUM(profit), 2) AS profit
+            FROM corporate_sales_raw
             WHERE LOWER(region) = LOWER(?)
-              AND quarter IN ('Q2', 'Q3')
-            GROUP BY quarter
-            ORDER BY quarter
-        """, (region,))
+              AND (
+                    (year = ? AND quarter = ?)
+                    OR
+                    (year = ? AND quarter = ?)
+              )
+            GROUP BY year, quarter
+            ORDER BY year, quarter
+        """
+
+        cursor.execute(
+            query,
+            (
+                region,
+                previous_year,
+                previous_quarter,
+                year,
+                quarter,
+            ),
+        )
 
         rows = cursor.fetchall()
 
-        if len(rows) < 2:
-            return {
-                "status": "insufficient_data",
-                "region": region,
-                "message": (
-                    "Not enough quarterly data is available "
-                    "for a Q2 versus Q3 comparison."
-                ),
-            }
-
         data = {
-            row["quarter"]: dict(row)
+            (row["year"], row["quarter"]): dict(row)
             for row in rows
         }
 
-        q2 = data.get("Q2")
-        q3 = data.get("Q3")
+        previous = data.get((previous_year, previous_quarter))
+        current = data.get((year, quarter))
 
-        if not q2 or not q3:
+        if not previous or not current:
             return {
                 "status": "insufficient_data",
                 "region": region,
-                "message": "Q2 and Q3 data are required.",
+                "comparison": {
+                    "previous_period": f"{previous_quarter} {previous_year}",
+                    "current_period": f"{quarter} {year}",
+                },
+                "message": (
+                    "Both comparison periods are required "
+                    "for a root-cause analysis."
+                ),
             }
 
-        # -------------------------------------------------
-        # Calculate margins
-        # -------------------------------------------------
+        # -----------------------------------------------------
+        # Margin calculations
+        # -----------------------------------------------------
 
-        q2_margin = (
-            q2["profit"] / q2["revenue"]
-            if q2["revenue"]
+        previous_margin = (
+            previous["profit"] / previous["revenue"]
+            if previous["revenue"]
             else 0
         )
 
-        q3_margin = (
-            q3["profit"] / q3["revenue"]
-            if q3["revenue"]
+        current_margin = (
+            current["profit"] / current["revenue"]
+            if current["revenue"]
             else 0
         )
 
-        margin_change = q3_margin - q2_margin
+        margin_change = current_margin - previous_margin
 
-        # -------------------------------------------------
-        # Cost changes
-        # -------------------------------------------------
+        # -----------------------------------------------------
+        # Cost-rate calculations
+        #
+        # Cost pressure is measured relative to revenue.
+        # This is more meaningful than comparing raw dollars
+        # because revenue can change between quarters.
+        # -----------------------------------------------------
 
-        material_change = (
-            q3["material_cost"]
-            - q2["material_cost"]
-        )
-
-        shipping_change = (
-            q3["shipping_cost"]
-            - q2["shipping_cost"]
-        )
-
-        marketing_change = (
-            q3["marketing_cost"]
-            - q2["marketing_cost"]
-        )
+        def cost_rate(cost, revenue):
+            return cost / revenue if revenue else 0
 
         drivers = [
             {
                 "name": "Material cost",
-                "change": material_change,
+                "previous_cost": previous["material_cost"],
+                "current_cost": current["material_cost"],
+                "previous_rate": cost_rate(
+                    previous["material_cost"],
+                    previous["revenue"],
+                ),
+                "current_rate": cost_rate(
+                    current["material_cost"],
+                    current["revenue"],
+                ),
             },
             {
                 "name": "Shipping cost",
-                "change": shipping_change,
+                "previous_cost": previous["shipping_cost"],
+                "current_cost": current["shipping_cost"],
+                "previous_rate": cost_rate(
+                    previous["shipping_cost"],
+                    previous["revenue"],
+                ),
+                "current_rate": cost_rate(
+                    current["shipping_cost"],
+                    current["revenue"],
+                ),
             },
             {
                 "name": "Marketing cost",
-                "change": marketing_change,
+                "previous_cost": previous["marketing_cost"],
+                "current_cost": current["marketing_cost"],
+                "previous_rate": cost_rate(
+                    previous["marketing_cost"],
+                    previous["revenue"],
+                ),
+                "current_rate": cost_rate(
+                    current["marketing_cost"],
+                    current["revenue"],
+                ),
             },
         ]
 
+        for driver in drivers:
+            driver["cost_change"] = (
+                driver["current_cost"]
+                - driver["previous_cost"]
+            )
+
+            driver["rate_change"] = (
+                driver["current_rate"]
+                - driver["previous_rate"]
+            )
+
+            driver["rate_change_pp"] = (
+                driver["rate_change"] * 100
+            )
+
+        # The biggest increase in cost/revenue ratio is the
+        # strongest tracked source of margin pressure.
         drivers.sort(
-            key=lambda item: item["change"],
+            key=lambda item: item["rate_change"],
             reverse=True,
         )
 
         top_driver = drivers[0]
 
-        # -------------------------------------------------
-        # Explanation
-        # -------------------------------------------------
+        # -----------------------------------------------------
+        # Revenue and profit movement
+        # -----------------------------------------------------
+
+        revenue_change = (
+            current["revenue"]
+            - previous["revenue"]
+        )
+
+        profit_change = (
+            current["profit"]
+            - previous["profit"]
+        )
+
+        # -----------------------------------------------------
+        # Human-readable explanation
+        # -----------------------------------------------------
 
         if margin_change < 0:
             summary = (
-                f"{region} margin declined from "
-                f"{q2_margin * 100:.2f}% in Q2 to "
-                f"{q3_margin * 100:.2f}% in Q3. "
-                f"The largest increase among tracked "
-                f"cost drivers was {top_driver['name']}."
+                f"{region} profit margin declined from "
+                f"{previous_margin * 100:.2f}% in "
+                f"{previous_quarter} {previous_year} to "
+                f"{current_margin * 100:.2f}% in "
+                f"{quarter} {year}. "
+                f"Among the tracked cost drivers, "
+                f"{top_driver['name']} showed the largest "
+                f"increase in cost as a percentage of revenue."
+            )
+        elif margin_change > 0:
+            summary = (
+                f"{region} profit margin improved from "
+                f"{previous_margin * 100:.2f}% to "
+                f"{current_margin * 100:.2f}%. "
+                f"The strongest tracked cost-rate movement was "
+                f"{top_driver['name']}."
             )
         else:
             summary = (
-                f"{region} margin did not decline between "
-                f"Q2 and Q3. Margin changed from "
-                f"{q2_margin * 100:.2f}% to "
-                f"{q3_margin * 100:.2f}%."
+                f"{region} profit margin was unchanged at "
+                f"{current_margin * 100:.2f}%."
             )
 
         return {
             "status": "verified",
             "region": region,
+
             "comparison": {
-                "previous_period": "Q2",
-                "current_period": "Q3",
+                "previous_period": (
+                    f"{previous_quarter} {previous_year}"
+                ),
+                "current_period": (
+                    f"{quarter} {year}"
+                ),
             },
+
             "metrics": {
-                "q2_margin": round(
-                    q2_margin * 100,
+                "previous_margin": round(
+                    previous_margin * 100,
                     2,
                 ),
-                "q3_margin": round(
-                    q3_margin * 100,
+                "current_margin": round(
+                    current_margin * 100,
                     2,
                 ),
-                "margin_change": round(
+                "margin_change_pp": round(
                     margin_change * 100,
                     2,
                 ),
+                "revenue_change": round(
+                    revenue_change,
+                    2,
+                ),
+                "profit_change": round(
+                    profit_change,
+                    2,
+                ),
             },
+
             "cost_drivers": [
                 {
                     "name": driver["name"],
-                    "change": round(
-                        driver["change"],
+                    "previous_cost": round(
+                        driver["previous_cost"],
+                        2,
+                    ),
+                    "current_cost": round(
+                        driver["current_cost"],
+                        2,
+                    ),
+                    "cost_change": round(
+                        driver["cost_change"],
+                        2,
+                    ),
+                    "previous_rate": round(
+                        driver["previous_rate"] * 100,
+                        2,
+                    ),
+                    "current_rate": round(
+                        driver["current_rate"] * 100,
+                        2,
+                    ),
+                    "rate_change_pp": round(
+                        driver["rate_change_pp"],
                         2,
                     ),
                 }
                 for driver in drivers
             ],
+
+            "top_driver": {
+                "name": top_driver["name"],
+                "rate_change_pp": round(
+                    top_driver["rate_change_pp"],
+                    2,
+                ),
+            },
+
             "summary": summary,
+
+            "governance": {
+                "status": "passed",
+                "source": "corporate_sales_raw",
+                "calculation": (
+                    "quarter-over-quarter margin "
+                    "and cost-rate comparison"
+                ),
+            },
         }
 
     finally:
