@@ -17,6 +17,12 @@ export default function AnalyticsPage() {
   const [selectedYear, setSelectedYear] = useState("");
   const [selectedQuarter, setSelectedQuarter] = useState("");
 
+  const [agentQuestion, setAgentQuestion] = useState("");
+  const [agentResult, setAgentResult] = useState(null);
+  const [agentLoading, setAgentLoading] = useState(false);
+  const [agentError, setAgentError] = useState("");
+  const [agentHistory, setAgentHistory] = useState([]);
+
   useEffect(() => {
     async function loadAnalytics() {
       try {
@@ -171,6 +177,70 @@ const [
 
     loadAnalytics();
   }, [selectedRegion, selectedYear, selectedQuarter]);
+
+    async function runAgent(questionOverride = agentQuestion) {
+  const rawQuestion = questionOverride.trim();
+
+  if (!rawQuestion) {
+    setAgentError("Enter a business question first.");
+    setAgentResult(null);
+    return;
+  }
+
+  const resolvedQuestion = resolveFollowUpQuestion(
+    rawQuestion,
+    agentHistory
+  );
+
+  try {
+    setAgentLoading(true);
+    setAgentError("");
+    setAgentResult(null);
+
+    const response = await fetch(
+      `${API}/api/agent/analyze?question=${encodeURIComponent(
+        resolvedQuestion
+      )}`
+    );
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error("Agent request failed");
+    }
+
+    if (data.status !== "verified") {
+      setAgentError(
+        data.message ||
+          data.reason ||
+          "This question could not be verified by the governance layer."
+      );
+
+      setAgentResult(data);
+      return;
+    }
+
+    setAgentResult(data);
+
+    setAgentHistory((previous) => [
+      {
+        question: rawQuestion,
+        result: data,
+      },
+      ...previous.filter(
+        (item) => item.question !== rawQuestion
+      ),
+    ].slice(0, 5));
+  } catch (error) {
+    console.error("Agent error:", error);
+
+    setAgentError(
+      "Unable to analyze the question. Make sure the backend is running."
+    );
+  } finally {
+    setAgentLoading(false);
+  }
+}
 
   /*
    * ---------------------------------------------------------
@@ -354,6 +424,196 @@ const [
         >
           Reset
         </button>
+
+      </section>
+
+          {/* =====================================================
+          GOVERNED QUERY COPILOT
+      ======================================================*/}
+
+      <section className="copilot-panel">
+
+        <div className="copilot-header">
+          <div>
+            <div className="copilot-eyebrow">
+              GOVERNED QUERY COPILOT
+            </div>
+
+            <h2>
+              Ask MetricMind.
+            </h2>
+
+            <p>
+              Ask a business question in natural language.
+              MetricMind validates the metric, filters and
+              calculation before returning an answer.
+            </p>
+          </div>
+
+          <div className="copilot-status">
+            <span className="green-dot"></span>
+            CERTIFIED AGENT
+          </div>
+        </div>
+
+        <div className="copilot-input-row">
+
+          <input
+            type="text"
+            value={agentQuestion}
+            onChange={(event) =>
+              setAgentQuestion(event.target.value)
+            }
+            onKeyDown={(event) => {
+              if (event.key === "Enter") {
+                runAgent();
+              }
+            }}
+            placeholder="e.g. What was Europe profit margin in Q3 2025?"
+          />
+
+          <button
+            className="copilot-button"
+            onClick={() => runAgent()}
+            disabled={agentLoading}
+          >
+            {agentLoading ? "Analyzing..." : "Analyze"}
+          </button>
+
+        </div>
+
+        <div className="copilot-examples">
+
+          <button
+            onClick={() =>
+              setAgentQuestion(
+                "What was Europe revenue in Q3 2025?"
+              )
+            }
+          >
+            Europe revenue
+          </button>
+
+          <button
+            onClick={() =>
+              setAgentQuestion(
+                "What was Europe profit margin in Q3 2025?"
+              )
+            }
+          >
+            Europe margin
+          </button>
+
+          <button
+            onClick={() =>
+              setAgentQuestion(
+                "What was Europe material cost in Q3 2025?"
+              )
+            }
+          >
+            Material cost
+          </button>
+
+          <button
+            onClick={() =>
+              setAgentQuestion(
+                "How many orders did Europe have in Q3 2025?"
+              )
+            }
+          >
+            Europe orders
+          </button>
+
+        </div>
+
+        {agentError && (
+          <div className="copilot-error">
+            {agentError}
+          </div>
+        )}
+
+        {agentHistory.length > 0 && (
+  <div className="copilot-history">
+    <div className="copilot-history-title">
+      RECENT QUESTIONS
+    </div>
+
+    <button
+  className="copilot-history-clear"
+  onClick={() => setAgentHistory([])}
+>
+  Clear
+</button>
+
+    {agentHistory.map((item, index) => (
+      <button
+        key={`${item.question}-${index}`}
+        className="copilot-history-item"
+        onClick={() => {
+  setAgentQuestion(item.question);
+  setAgentResult(null);
+  setAgentError("");
+  runAgent(item.question);
+}}
+      >
+        <span>{item.question}</span>
+        <strong>
+          {formatAgentValue(item.result.value, item.result.metric)}
+        </strong>
+      </button>
+    ))}
+  </div>
+)}
+
+        {agentResult?.status === "verified" && (
+          <div className="copilot-result">
+
+            <div className="copilot-answer">
+              <span className="copilot-result-label">
+                VERIFIED ANSWER
+              </span>
+
+              <strong>
+                {formatAgentValue(
+                  agentResult.value,
+                  agentResult.metric
+                )}
+              </strong>
+
+              <p>
+                {agentResult.metric} for{" "}
+                {formatAgentFilters(agentResult.filters)}
+              </p>
+            </div>
+
+            <div className="copilot-evidence">
+
+              <div className="evidence-item">
+                <span>METRIC</span>
+                <strong>{agentResult.metric}</strong>
+              </div>
+
+              <div className="evidence-item">
+                <span>SOURCE</span>
+                <strong>{agentResult.source}</strong>
+              </div>
+
+              <div className="evidence-item">
+                <span>FORMULA</span>
+                <strong>{agentResult.formula}</strong>
+              </div>
+
+              <div className="evidence-item">
+                <span>GOVERNANCE</span>
+                <strong className="verified-text">
+                  ✓ {agentResult.governance}
+                </strong>
+              </div>
+
+            </div>
+
+          </div>
+        )}
 
       </section>
 
@@ -900,4 +1160,99 @@ function getQuarterFromMonth(month) {
   }
 
   return "Q4";
+}
+
+function formatAgentValue(value, metric) {
+  const numericValue = Number(value);
+
+  if (!Number.isFinite(numericValue)) {
+    return "—";
+  }
+
+  if (metric === "Profit Margin") {
+    return `${numericValue.toFixed(2)}%`;
+  }
+
+  if (metric === "Orders") {
+    return formatNumber(numericValue);
+  }
+
+  return formatMoney(numericValue);
+}
+
+
+function formatAgentFilters(filters = {}) {
+  const parts = [];
+
+  if (filters.region) {
+    parts.push(filters.region);
+  }
+
+  if (filters.year) {
+    parts.push(filters.year);
+  }
+
+  if (filters.quarter) {
+    parts.push(filters.quarter);
+  }
+
+  return parts.length > 0
+    ? parts.join(" • ")
+    : "selected period";
+}
+
+function resolveFollowUpQuestion(question, history) {
+  const trimmed = question.trim();
+
+  if (!trimmed || history.length === 0) {
+    return trimmed;
+  }
+
+  const latest = history[0];
+
+  if (!latest?.result?.filters) {
+    return trimmed;
+  }
+
+  const lower = trimmed.toLowerCase();
+
+  const hasRegion =
+    lower.includes("asia") ||
+    lower.includes("europe") ||
+    lower.includes("north america");
+
+  const hasYear = /\b20\d{2}\b/.test(trimmed);
+
+  const hasQuarter =
+    /\bq[1-4]\b/i.test(trimmed) ||
+    lower.includes("first quarter") ||
+    lower.includes("second quarter") ||
+    lower.includes("third quarter") ||
+    lower.includes("fourth quarter");
+
+  if (hasRegion || hasYear || hasQuarter) {
+    return trimmed;
+  }
+
+  const filters = latest.result.filters;
+
+  const contextParts = [];
+
+  if (filters.region) {
+    contextParts.push(`region ${filters.region}`);
+  }
+
+  if (filters.year) {
+    contextParts.push(`year ${filters.year}`);
+  }
+
+  if (filters.quarter) {
+    contextParts.push(`quarter ${filters.quarter}`);
+  }
+
+  if (contextParts.length === 0) {
+    return trimmed;
+  }
+
+  return `${trimmed} for ${contextParts.join(", ")}`;
 }
