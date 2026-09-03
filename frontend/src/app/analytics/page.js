@@ -26,6 +26,7 @@ export default function AnalyticsPage() {
   const [marginAnalysis, setMarginAnalysis] = useState(null);
   const [marginLoading, setMarginLoading] = useState(false);
   const [marginError, setMarginError] = useState("");
+  const [kpiData, setKpiData] = useState(null);
 
   /*
    * ---------------------------------------------------------
@@ -279,116 +280,250 @@ export default function AnalyticsPage() {
    */
 
   useEffect(() => {
-    async function loadMarginAnalysis() {
+  async function loadAnalytics() {
+    try {
+      setLoading(true);
+      setError("");
+
+      const regionalParams = new URLSearchParams();
+
+      if (selectedRegion) {
+        regionalParams.set("region", selectedRegion);
+      }
+
+      if (selectedYear) {
+        regionalParams.set("year", selectedYear);
+      }
+
+      if (selectedQuarter) {
+        regionalParams.set("quarter", selectedQuarter);
+      }
+
+      const regionalSuffix = regionalParams.toString()
+        ? `?${regionalParams.toString()}`
+        : "";
+
+      const performanceParams = new URLSearchParams();
+
+      if (selectedRegion) {
+        performanceParams.set(
+          "region",
+          selectedRegion
+        );
+      }
+
+      const performanceSuffix =
+        performanceParams.toString()
+          ? `?${performanceParams.toString()}`
+          : "";
+
+      const monthlyParams = new URLSearchParams();
+
+      if (selectedYear) {
+        monthlyParams.set(
+          "year",
+          selectedYear
+        );
+      }
+
+      if (selectedQuarter) {
+        monthlyParams.set(
+          "quarter",
+          selectedQuarter
+        );
+      }
+
+      const monthlySuffix =
+        monthlyParams.toString()
+          ? `?${monthlyParams.toString()}`
+          : "";
+
+      const driversParams =
+        new URLSearchParams();
+
+      if (selectedRegion) {
+        driversParams.set(
+          "region",
+          selectedRegion
+        );
+      }
+
+      if (selectedYear) {
+        driversParams.set(
+          "year",
+          selectedYear
+        );
+      }
+
+      if (selectedQuarter) {
+        driversParams.set(
+          "quarter",
+          selectedQuarter
+        );
+      }
+
+      const driversSuffix =
+        driversParams.toString()
+          ? `?${driversParams.toString()}`
+          : "";
+
+      /*
+       * GOVERNED KPI QUERY
+       *
+       * This is the authoritative source for:
+       * Revenue
+       * Profit
+       * Margin
+       * Orders
+       */
+      const kpiSuffix =
+        regionalParams.toString()
+          ? `?${regionalParams.toString()}`
+          : "";
+
+      const [
+        kpiResponse,
+        regionalResponse,
+        performanceResponse,
+        monthlyResponse,
+        driversResponse,
+      ] = await Promise.all([
+        fetch(
+          `${API}/api/analytics/kpis${kpiSuffix}`
+        ),
+
+        fetch(
+          `${API}/api/analytics/regional-revenue${regionalSuffix}`
+        ),
+
+        fetch(
+          `${API}/api/analytics/regional-performance${performanceSuffix}`
+        ),
+
+        fetch(
+          `${API}/api/analytics/monthly-performance${monthlySuffix}`
+        ),
+
+        fetch(
+          `${API}/api/analytics/cost-drivers${driversSuffix}`
+        ),
+      ]);
+
       if (
-        !selectedRegion ||
-        !selectedYear ||
-        !selectedQuarter
+        !kpiResponse.ok ||
+        !regionalResponse.ok ||
+        !performanceResponse.ok ||
+        !monthlyResponse.ok ||
+        !driversResponse.ok
       ) {
-        setMarginAnalysis(null);
-        setMarginError("");
-        return;
+        throw new Error(
+          "Analytics API request failed"
+        );
       }
 
-      try {
-        setMarginLoading(true);
-        setMarginError("");
+      const kpiDataResponse =
+        await kpiResponse.json();
 
-        const response = await fetch(
-          `${API}/api/analytics/margin-root-cause?region=${encodeURIComponent(
-            selectedRegion
-          )}&year=${encodeURIComponent(
-            selectedYear
-          )}&quarter=${encodeURIComponent(
-            selectedQuarter
-          )}`
-        );
+      const regionalData =
+        await regionalResponse.json();
 
-        const data =
-          await response.json();
+      const performanceData =
+        await performanceResponse.json();
 
-        if (!response.ok) {
-          throw new Error(
-            "Margin analysis request failed"
-          );
-        }
+      const monthlyData =
+        await monthlyResponse.json();
 
-        if (data.status !== "verified") {
-          setMarginAnalysis(null);
+      const driversData =
+        await driversResponse.json();
 
-          setMarginError(
-            data.message ||
-              "Margin analysis requires a complete comparison period."
-          );
+      /*
+       * Store governed KPI response separately.
+       */
+      setKpiData(
+        kpiDataResponse?.status ===
+          "verified"
+          ? kpiDataResponse
+          : null
+      );
 
-          return;
-        }
+      setRegional(
+        Array.isArray(regionalData)
+          ? regionalData
+          : regionalData?.data ||
+              regionalData?.results ||
+              []
+      );
 
-        setMarginAnalysis(data);
-      } catch (error) {
-        console.error(
-          "Margin analysis error:",
-          error
-        );
+      setPerformance(
+        Array.isArray(performanceData)
+          ? performanceData
+          : performanceData?.data ||
+              performanceData?.results ||
+              []
+      );
 
-        setMarginAnalysis(null);
+      setMonthly(
+        Array.isArray(monthlyData)
+          ? monthlyData
+          : monthlyData?.data ||
+              monthlyData?.results ||
+              []
+      );
 
-        setMarginError(
-          "Unable to load margin intelligence. Make sure the backend is running."
-        );
-      } finally {
-        setMarginLoading(false);
-      }
+      setDrivers(
+        Array.isArray(driversData)
+          ? driversData
+          : driversData?.data ||
+              driversData?.results ||
+              []
+      );
+    } catch (error) {
+      console.error(
+        "Analytics loading error:",
+        error
+      );
+
+      setKpiData(null);
+      setRegional([]);
+      setPerformance([]);
+      setMonthly([]);
+      setDrivers([]);
+
+      setError(
+        "Unable to load analytics data."
+      );
+    } finally {
+      setLoading(false);
     }
+  }
 
-    loadMarginAnalysis();
-  }, [
-    selectedRegion,
-    selectedYear,
-    selectedQuarter,
-  ]);
-
+  loadAnalytics();
+}, [
+  selectedRegion,
+  selectedYear,
+  selectedQuarter,
+]);
   /*
-   * ---------------------------------------------------------
-   * FILTERED KPI CALCULATIONS
-   * ---------------------------------------------------------
-   */
+ * ---------------------------------------------------------
+ * GOVERNED KPI VALUES
+ * ---------------------------------------------------------
+ */
 
-  const totalRevenue =
-    drivers.reduce(
-      (sum, item) =>
-        sum +
-        Number(
-          item.total_revenue ?? 0
-        ),
-      0
-    );
+const totalRevenue = Number(
+  kpiData?.kpis?.revenue ?? 0
+);
 
-  const totalProfit =
-    drivers.reduce(
-      (sum, item) =>
-        sum +
-        Number(
-          item.total_profit ?? 0
-        ),
-      0
-    );
+const totalProfit = Number(
+  kpiData?.kpis?.profit ?? 0
+);
 
-  const totalOrders =
-  monthly.reduce(
-    (sum, item) =>
-      sum +
-      Number(
-        item.total_orders ?? 0
-      ),
-    0
-  );
+const averageMargin = Number(
+  kpiData?.kpis?.margin ?? 0
+);
 
-  const averageMargin =
-    totalRevenue > 0
-      ? (totalProfit / totalRevenue) *
-        100
-      : 0;
+const totalOrders = Number(
+  kpiData?.kpis?.orders ?? 0
+);
 
   /*
    * ---------------------------------------------------------

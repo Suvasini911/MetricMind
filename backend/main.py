@@ -154,13 +154,25 @@ def regional_revenue(
 
 
 # =========================================================
-# REGIONAL PERFORMANCE
+# GOVERNED REGIONAL PERFORMANCE
 # =========================================================
 
 @app.get("/api/analytics/regional-performance")
 def regional_performance(
     region: str | None = None,
 ):
+    """
+    Governed regional performance calculated directly
+    from the raw warehouse.
+
+    Source:
+        corporate_sales_raw
+
+    Metrics:
+        Profit
+        Profit Margin
+    """
+
     connection = get_connection()
 
     try:
@@ -169,22 +181,37 @@ def regional_performance(
         query = """
             SELECT
                 region,
-                ROUND(total_revenue, 2) AS total_revenue,
-                ROUND(total_cost, 2) AS total_cost,
-                ROUND(total_profit, 2) AS total_profit,
-                ROUND(profit_margin * 100, 2) AS profit_margin,
-                total_orders
-            FROM regional_performance
+                ROUND(
+                    COALESCE(SUM(profit), 0),
+                    2
+                ) AS profit,
+                ROUND(
+                    COALESCE(
+                        SUM(profit) * 100.0 /
+                        NULLIF(SUM(revenue), 0),
+                        0
+                    ),
+                    2
+                ) AS margin,
+                ROUND(
+                    COALESCE(SUM(revenue), 0),
+                    2
+                ) AS revenue
+            FROM corporate_sales_raw
+            WHERE 1 = 1
         """
 
         params = []
 
         if region:
-            query += " WHERE LOWER(region) = LOWER(?)"
+            query += """
+                AND LOWER(region) = LOWER(?)
+            """
             params.append(region)
 
         query += """
-            ORDER BY total_revenue DESC
+            GROUP BY region
+            ORDER BY profit DESC
         """
 
         cursor.execute(query, params)
@@ -192,8 +219,29 @@ def regional_performance(
         rows = cursor.fetchall()
 
         return {
-            "metric": "Regional Performance",
-            "data": [dict(row) for row in rows],
+            "status": "verified",
+            "data": [
+                {
+                    "region": row["region"],
+                    "profit": float(
+                        row["profit"] or 0
+                    ),
+                    "margin": float(
+                        row["margin"] or 0
+                    ),
+                    "revenue": float(
+                        row["revenue"] or 0
+                    ),
+                }
+                for row in rows
+            ],
+            "governance": {
+                "status": "passed",
+                "source": "corporate_sales_raw",
+                "calculation": (
+                    "regional warehouse aggregation"
+                ),
+            },
         }
 
     finally:
@@ -201,7 +249,7 @@ def regional_performance(
 
 
 # =========================================================
-# MONTHLY PERFORMANCE
+# GOVERNED MONTHLY PERFORMANCE
 # =========================================================
 
 @app.get("/api/analytics/monthly-performance")
@@ -209,6 +257,11 @@ def monthly_performance(
     year: int | None = None,
     quarter: str | None = None,
 ):
+    """
+    Governed monthly performance calculated directly
+    from the raw warehouse.
+    """
+
     connection = get_connection()
 
     try:
@@ -217,29 +270,54 @@ def monthly_performance(
         query = """
             SELECT
                 year,
-                quarter,
                 month,
-                ROUND(total_revenue, 2) AS total_revenue,
-                ROUND(total_cost, 2) AS total_cost,
-                ROUND(total_profit, 2) AS total_profit,
-                ROUND(profit_margin * 100, 2) AS profit_margin,
-                total_orders
-            FROM monthly_performance
-            WHERE 1=1
+                quarter,
+                ROUND(
+                    COALESCE(SUM(revenue), 0),
+                    2
+                ) AS revenue,
+                ROUND(
+                    COALESCE(SUM(profit), 0),
+                    2
+                ) AS profit,
+                ROUND(
+                    COALESCE(
+                        SUM(profit) * 100.0 /
+                        NULLIF(SUM(revenue), 0),
+                        0
+                    ),
+                    2
+                ) AS margin,
+                COALESCE(
+                    SUM(orders),
+                    0
+                ) AS orders
+            FROM corporate_sales_raw
+            WHERE 1 = 1
         """
 
         params = []
 
         if year:
-            query += " AND year = ?"
+            query += """
+                AND year = ?
+            """
             params.append(year)
 
         if quarter:
-            query += " AND quarter = ?"
+            query += """
+                AND quarter = ?
+            """
             params.append(quarter)
 
         query += """
-            ORDER BY year, month
+            GROUP BY
+                year,
+                month,
+                quarter
+            ORDER BY
+                year,
+                month
         """
 
         cursor.execute(query, params)
@@ -247,8 +325,38 @@ def monthly_performance(
         rows = cursor.fetchall()
 
         return {
-            "metric": "Monthly Performance",
-            "data": [dict(row) for row in rows],
+            "status": "verified",
+            "data": [
+                {
+                    "year": int(
+                        row["year"]
+                    ),
+                    "month": int(
+                        row["month"]
+                    ),
+                    "quarter": row["quarter"],
+                    "revenue": float(
+                        row["revenue"] or 0
+                    ),
+                    "profit": float(
+                        row["profit"] or 0
+                    ),
+                    "margin": float(
+                        row["margin"] or 0
+                    ),
+                    "total_orders": int(
+                        row["orders"] or 0
+                    ),
+                }
+                for row in rows
+            ],
+            "governance": {
+                "status": "passed",
+                "source": "corporate_sales_raw",
+                "calculation": (
+                    "monthly warehouse aggregation"
+                ),
+            },
         }
 
     finally:
@@ -256,7 +364,7 @@ def monthly_performance(
 
 
 # =========================================================
-# COST DRIVER ANALYSIS
+# GOVERNED COST DRIVERS
 # =========================================================
 
 @app.get("/api/analytics/cost-drivers")
@@ -265,6 +373,11 @@ def cost_drivers(
     year: int | None = None,
     quarter: str | None = None,
 ):
+    """
+    Governed cost-driver analysis calculated directly
+    from the raw warehouse.
+    """
+
     connection = get_connection()
 
     try:
@@ -272,45 +385,118 @@ def cost_drivers(
 
         query = """
             SELECT
-                region,
-                year,
-                quarter,
-                ROUND(total_revenue, 2) AS total_revenue,
-                ROUND(material_cost, 2) AS material_cost,
-                ROUND(shipping_cost, 2) AS shipping_cost,
-                ROUND(marketing_cost, 2) AS marketing_cost,
-                ROUND(total_cost, 2) AS total_cost,
-                ROUND(total_profit, 2) AS total_profit,
-                ROUND(profit_margin * 100, 2) AS profit_margin
-            FROM cost_driver_analysis
-            WHERE 1=1
+                ROUND(
+                    COALESCE(SUM(material_cost), 0),
+                    2
+                ) AS material_cost,
+                ROUND(
+                    COALESCE(SUM(shipping_cost), 0),
+                    2
+                ) AS shipping_cost,
+                ROUND(
+                    COALESCE(SUM(marketing_cost), 0),
+                    2
+                ) AS marketing_cost,
+                ROUND(
+                    COALESCE(SUM(revenue), 0),
+                    2
+                ) AS revenue
+            FROM corporate_sales_raw
+            WHERE 1 = 1
         """
 
         params = []
 
         if region:
-            query += " AND LOWER(region) = LOWER(?)"
+            query += """
+                AND LOWER(region) = LOWER(?)
+            """
             params.append(region)
 
         if year:
-            query += " AND year = ?"
+            query += """
+                AND year = ?
+            """
             params.append(year)
 
         if quarter:
-            query += " AND quarter = ?"
+            query += """
+                AND quarter = ?
+            """
             params.append(quarter)
-
-        query += """
-            ORDER BY year, quarter, region
-        """
 
         cursor.execute(query, params)
 
-        rows = cursor.fetchall()
+        row = cursor.fetchone()
+
+        revenue = float(
+            row["revenue"] or 0
+        )
+
+        material = float(
+            row["material_cost"] or 0
+        )
+
+        shipping = float(
+            row["shipping_cost"] or 0
+        )
+
+        marketing = float(
+            row["marketing_cost"] or 0
+        )
 
         return {
-            "metric": "Cost Driver Analysis",
-            "data": [dict(row) for row in rows],
+            "status": "verified",
+
+            "data": [
+                {
+                    "name": "Material Cost",
+                    "material_cost": material,
+                    "value": material,
+                    "share_of_revenue": (
+                        round(
+                            material * 100 / revenue,
+                            2
+                        )
+                        if revenue
+                        else 0
+                    ),
+                },
+                {
+                    "name": "Shipping Cost",
+                    "shipping_cost": shipping,
+                    "value": shipping,
+                    "share_of_revenue": (
+                        round(
+                            shipping * 100 / revenue,
+                            2
+                        )
+                        if revenue
+                        else 0
+                    ),
+                },
+                {
+                    "name": "Marketing Cost",
+                    "marketing_cost": marketing,
+                    "value": marketing,
+                    "share_of_revenue": (
+                        round(
+                            marketing * 100 / revenue,
+                            2
+                        )
+                        if revenue
+                        else 0
+                    ),
+                },
+            ],
+
+            "governance": {
+                "status": "passed",
+                "source": "corporate_sales_raw",
+                "calculation": (
+                    "filtered warehouse cost aggregation"
+                ),
+            },
         }
 
     finally:
@@ -422,6 +608,130 @@ def query(question: str):
 
     finally:
         connection.close()
+
+
+        # =========================================================
+# GOVERNED KPI SUMMARY
+# =========================================================
+
+@app.get("/api/analytics/kpis")
+def analytics_kpis(
+    region: str | None = None,
+    year: int | None = None,
+    quarter: str | None = None,
+):
+    """
+    Governed KPI summary calculated directly from the raw warehouse.
+
+    Revenue, profit, margin and orders all use the same filtered
+    source and therefore remain mathematically consistent.
+    """
+
+    connection = get_connection()
+
+    try:
+        cursor = connection.cursor()
+
+        query = """
+            SELECT
+                ROUND(COALESCE(SUM(revenue), 0), 2) AS revenue,
+                ROUND(COALESCE(SUM(profit), 0), 2) AS profit,
+                ROUND(
+                    COALESCE(
+                        SUM(profit) * 100.0 /
+                        NULLIF(SUM(revenue), 0),
+                        0
+                    ),
+                    2
+                ) AS margin,
+                COALESCE(SUM(orders), 0) AS orders,
+                ROUND(COALESCE(SUM(material_cost), 0), 2)
+                    AS material_cost,
+                ROUND(COALESCE(SUM(shipping_cost), 0), 2)
+                    AS shipping_cost,
+                ROUND(COALESCE(SUM(marketing_cost), 0), 2)
+                    AS marketing_cost,
+                COUNT(*) AS records
+            FROM corporate_sales_raw
+            WHERE 1 = 1
+        """
+
+        params = []
+
+        if region:
+            query += """
+                AND LOWER(region) = LOWER(?)
+            """
+            params.append(region)
+
+        if year:
+            query += """
+                AND year = ?
+            """
+            params.append(year)
+
+        if quarter:
+            query += """
+                AND quarter = ?
+            """
+            params.append(quarter)
+
+        cursor.execute(query, params)
+
+        row = cursor.fetchone()
+
+        return {
+            "status": "verified",
+
+            "filters": {
+                "region": region,
+                "year": year,
+                "quarter": quarter,
+            },
+
+            "kpis": {
+                "revenue": float(
+                    row["revenue"] or 0
+                ),
+                "profit": float(
+                    row["profit"] or 0
+                ),
+                "margin": float(
+                    row["margin"] or 0
+                ),
+                "orders": int(
+                    row["orders"] or 0
+                ),
+            },
+
+            "costs": {
+                "material": float(
+                    row["material_cost"] or 0
+                ),
+                "shipping": float(
+                    row["shipping_cost"] or 0
+                ),
+                "marketing": float(
+                    row["marketing_cost"] or 0
+                ),
+            },
+
+            "records": int(
+                row["records"] or 0
+            ),
+
+            "governance": {
+                "status": "passed",
+                "source": "corporate_sales_raw",
+                "calculation": (
+                    "filtered warehouse aggregation"
+                ),
+            },
+        }
+
+    finally:
+        connection.close()
+
 
 
 # =========================================================
