@@ -22,11 +22,17 @@ export default function AnalyticsPage() {
   const [agentLoading, setAgentLoading] = useState(false);
   const [agentError, setAgentError] = useState("");
   const [agentHistory, setAgentHistory] = useState([]);
+  const [showQueryTrace, setShowQueryTrace] =
+  useState(false);
 
   const [marginAnalysis, setMarginAnalysis] = useState(null);
   const [marginLoading, setMarginLoading] = useState(false);
   const [marginError, setMarginError] = useState("");
   const [kpiData, setKpiData] = useState(null);
+
+  const [insights, setInsights] = useState(null);
+const [insightsLoading, setInsightsLoading] = useState(false);
+const [insightsError, setInsightsError] = useState("");
 
   /*
    * ---------------------------------------------------------
@@ -35,156 +41,76 @@ export default function AnalyticsPage() {
    */
 
   useEffect(() => {
-    async function loadAnalytics() {
-      try {
-        setLoading(true);
-        setError("");
+  async function loadMarginAnalysis() {
+    const region = selectedRegion;
+    const year = selectedYear;
+    const quarter = selectedQuarter;
 
-        const regionalParams = new URLSearchParams();
-
-        if (selectedRegion) {
-          regionalParams.set("region", selectedRegion);
-        }
-
-        if (selectedYear) {
-          regionalParams.set("year", selectedYear);
-        }
-
-        if (selectedQuarter) {
-          regionalParams.set("quarter", selectedQuarter);
-        }
-
-        const regionalSuffix = regionalParams.toString()
-          ? `?${regionalParams.toString()}`
-          : "";
-
-        const performanceSuffix = selectedRegion
-          ? `?region=${encodeURIComponent(selectedRegion)}`
-          : "";
-
-        const monthlyParams = new URLSearchParams();
-
-        if (selectedYear) {
-          monthlyParams.set("year", selectedYear);
-        }
-
-        if (selectedQuarter) {
-          monthlyParams.set("quarter", selectedQuarter);
-        }
-
-        const monthlySuffix = monthlyParams.toString()
-          ? `?${monthlyParams.toString()}`
-          : "";
-
-        const driversParams = new URLSearchParams();
-
-        if (selectedRegion) {
-          driversParams.set("region", selectedRegion);
-        }
-
-        if (selectedYear) {
-          driversParams.set("year", selectedYear);
-        }
-
-        if (selectedQuarter) {
-          driversParams.set("quarter", selectedQuarter);
-        }
-
-        const driversSuffix = driversParams.toString()
-          ? `?${driversParams.toString()}`
-          : "";
-
-        const [
-          regionalResponse,
-          performanceResponse,
-          monthlyResponse,
-          driversResponse,
-        ] = await Promise.all([
-          fetch(
-            `${API}/api/analytics/regional-revenue${regionalSuffix}`
-          ),
-
-          fetch(
-            `${API}/api/analytics/regional-performance${performanceSuffix}`
-          ),
-
-          fetch(
-            `${API}/api/analytics/monthly-performance${monthlySuffix}`
-          ),
-
-          fetch(
-            `${API}/api/analytics/cost-drivers${driversSuffix}`
-          ),
-        ]);
-
-        if (
-          !regionalResponse.ok ||
-          !performanceResponse.ok ||
-          !monthlyResponse.ok ||
-          !driversResponse.ok
-        ) {
-          throw new Error("Analytics API request failed");
-        }
-
-        const regionalData = await regionalResponse.json();
-        const performanceData = await performanceResponse.json();
-        const monthlyData = await monthlyResponse.json();
-        const driversData = await driversResponse.json();
-
-        setRegional(
-          Array.isArray(regionalData)
-            ? regionalData
-            : regionalData?.data ||
-                regionalData?.results ||
-                []
-        );
-
-        setPerformance(
-          Array.isArray(performanceData)
-            ? performanceData
-            : performanceData?.data ||
-                performanceData?.results ||
-                []
-        );
-
-        setMonthly(
-          Array.isArray(monthlyData)
-            ? monthlyData
-            : monthlyData?.data ||
-                monthlyData?.results ||
-                []
-        );
-
-        setDrivers(
-          Array.isArray(driversData)
-            ? driversData
-            : driversData?.data ||
-                driversData?.results ||
-                []
-        );
-      } catch (error) {
-        console.error(
-          "Analytics loading error:",
-          error
-        );
-
-        setRegional([]);
-        setPerformance([]);
-        setMonthly([]);
-        setDrivers([]);
-
-        setError("Unable to load analytics data.");
-      } finally {
-        setLoading(false);
-      }
+    if (!region || !year || !quarter) {
+      setMarginAnalysis(null);
+      setMarginError("");
+      setMarginLoading(false);
+      return;
     }
 
-    loadAnalytics();
-  }, [
-    selectedRegion,
-    selectedYear,
-    selectedQuarter,
-  ]);
+    try {
+      setMarginLoading(true);
+      setMarginError("");
+      setMarginAnalysis(null);
+
+      const params = new URLSearchParams({
+        region: String(region),
+        year: String(year),
+        quarter: String(quarter),
+      });
+
+      const response = await fetch(
+        `${API}/api/analytics/margin-root-cause?${params.toString()}`
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          data?.detail ||
+            "Margin analysis request failed"
+        );
+      }
+
+      if (data.status !== "verified") {
+        setMarginError(
+          data.message ||
+            "Margin analysis requires a complete comparison period."
+        );
+
+        setMarginAnalysis(null);
+        return;
+      }
+
+      setMarginAnalysis(data);
+    } catch (error) {
+      console.error(
+        "Margin analysis error:",
+        error
+      );
+
+      setMarginAnalysis(null);
+
+      setMarginError(
+        error.message ||
+          "Unable to load margin intelligence."
+      );
+    } finally {
+      setMarginLoading(false);
+    }
+  }
+
+  loadMarginAnalysis();
+}, [
+  selectedRegion,
+  selectedYear,
+  selectedQuarter,
+]);
 
   /*
    * ---------------------------------------------------------
@@ -193,61 +119,76 @@ export default function AnalyticsPage() {
    */
 
   async function runAgent(
-    questionOverride = agentQuestion
-  ) {
-    const rawQuestion =
-      questionOverride.trim();
+  questionOverride = agentQuestion
+) {
+  const rawQuestion =
+    questionOverride.trim();
 
-    if (!rawQuestion) {
+  if (!rawQuestion) {
+    setAgentError(
+      "Enter a business question first."
+    );
+
+    setAgentResult(null);
+    return;
+  }
+
+  /*
+   * Resolve context in this order:
+   *
+   * 1. Explicit context in the question
+   * 2. Previous Copilot question
+   * 3. Current dashboard filters
+   */
+  const resolvedQuestion =
+    resolveFollowUpQuestion(
+      rawQuestion,
+      agentHistory,
+      {
+        region: selectedRegion,
+        year: selectedYear,
+        quarter: selectedQuarter,
+      }
+    );
+
+  try {
+    setAgentLoading(true);
+    setAgentError("");
+    setAgentResult(null);
+
+    const response = await fetch(
+      `${API}/api/agent/analyze?question=${encodeURIComponent(
+        resolvedQuestion
+      )}`
+    );
+
+    const data =
+      await response.json();
+
+    if (!response.ok) {
+      throw new Error(
+        "Agent request failed"
+      );
+    }
+
+    if (data.status !== "verified") {
       setAgentError(
-        "Enter a business question first."
+        data.message ||
+          data.reason ||
+          "This question could not be verified by the governance layer."
       );
 
-      setAgentResult(null);
+      setAgentResult(data);
       return;
     }
 
-    const resolvedQuestion =
-      resolveFollowUpQuestion(
-        rawQuestion,
-        agentHistory
-      );
+    setAgentResult(data);
 
-    try {
-      setAgentLoading(true);
-      setAgentError("");
-      setAgentResult(null);
-
-      const response = await fetch(
-        `${API}/api/agent/analyze?question=${encodeURIComponent(
-          resolvedQuestion
-        )}`
-      );
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(
-          "Agent request failed"
-        );
-      }
-
-      if (data.status !== "verified") {
-        setAgentError(
-          data.message ||
-            data.reason ||
-            "This question could not be verified by the governance layer."
-        );
-
-        setAgentResult(data);
-        return;
-      }
-
-      setAgentResult(data);
-
-      setAgentHistory((previous) => [
+    setAgentHistory(
+      (previous) => [
         {
           question: rawQuestion,
+          resolvedQuestion,
           result: data,
         },
 
@@ -255,20 +196,23 @@ export default function AnalyticsPage() {
           (item) =>
             item.question !== rawQuestion
         ),
-      ].slice(0, 5));
-    } catch (error) {
-      console.error(
-        "Agent error:",
-        error
-      );
+      ].slice(0, 5)
+    );
 
-      setAgentError(
-        "Unable to analyze the question. Make sure the backend is running."
-      );
-    } finally {
-      setAgentLoading(false);
-    }
+  } catch (error) {
+    console.error(
+      "Agent error:",
+      error
+    );
+
+    setAgentError(
+      "Unable to analyze the question. Make sure the backend is running."
+    );
+
+  } finally {
+    setAgentLoading(false);
   }
+}
 
   /*
    * ---------------------------------------------------------
@@ -303,35 +247,58 @@ export default function AnalyticsPage() {
         ? `?${regionalParams.toString()}`
         : "";
 
-      const performanceParams = new URLSearchParams();
+      const performanceParams =
+  new URLSearchParams();
 
-      if (selectedRegion) {
-        performanceParams.set(
-          "region",
-          selectedRegion
-        );
-      }
+if (selectedRegion) {
+  performanceParams.set(
+    "region",
+    selectedRegion
+  );
+}
 
-      const performanceSuffix =
-        performanceParams.toString()
-          ? `?${performanceParams.toString()}`
-          : "";
+if (selectedYear) {
+  performanceParams.set(
+    "year",
+    selectedYear
+  );
+}
 
-      const monthlyParams = new URLSearchParams();
+if (selectedQuarter) {
+  performanceParams.set(
+    "quarter",
+    selectedQuarter
+  );
+}
 
-      if (selectedYear) {
-        monthlyParams.set(
-          "year",
-          selectedYear
-        );
-      }
+const performanceSuffix =
+  performanceParams.toString()
+    ? `?${performanceParams.toString()}`
+    : "";
 
-      if (selectedQuarter) {
-        monthlyParams.set(
-          "quarter",
-          selectedQuarter
-        );
-      }
+      const monthlyParams =
+  new URLSearchParams();
+
+if (selectedRegion) {
+  monthlyParams.set(
+    "region",
+    selectedRegion
+  );
+}
+
+if (selectedYear) {
+  monthlyParams.set(
+    "year",
+    selectedYear
+  );
+}
+
+if (selectedQuarter) {
+  monthlyParams.set(
+    "quarter",
+    selectedQuarter
+  );
+}
 
       const monthlySuffix =
         monthlyParams.toString()
@@ -503,6 +470,83 @@ export default function AnalyticsPage() {
   selectedYear,
   selectedQuarter,
 ]);
+
+/*
+ * ---------------------------------------------------------
+ * EXECUTIVE INSIGHT ENGINE
+ * ---------------------------------------------------------
+ */
+
+useEffect(() => {
+  async function loadInsights() {
+    if (
+      !selectedRegion ||
+      !selectedYear ||
+      !selectedQuarter
+    ) {
+      setInsights(null);
+      setInsightsError("");
+      return;
+    }
+
+    try {
+      setInsightsLoading(true);
+      setInsightsError("");
+
+      const response = await fetch(
+        `${API}/api/analytics/insights?region=${encodeURIComponent(
+          selectedRegion
+        )}&year=${encodeURIComponent(
+          selectedYear
+        )}&quarter=${encodeURIComponent(
+          selectedQuarter
+        )}`
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          "Insight request failed"
+        );
+      }
+
+      if (data.status !== "verified") {
+        setInsights(null);
+
+        setInsightsError(
+          data.message ||
+            "Executive insights require a complete comparison period."
+        );
+
+        return;
+      }
+
+      setInsights(data);
+    } catch (error) {
+      console.error(
+        "Insight engine error:",
+        error
+      );
+
+      setInsights(null);
+
+      setInsightsError(
+        "Unable to load executive insights."
+      );
+    } finally {
+      setInsightsLoading(false);
+    }
+  }
+
+  loadInsights();
+}, [
+  selectedRegion,
+  selectedYear,
+  selectedQuarter,
+]);
+
+
   /*
  * ---------------------------------------------------------
  * GOVERNED KPI VALUES
@@ -780,6 +824,37 @@ const totalOrders = Number(
 
         </div>
 
+        <div className="copilot-context-bar">
+  <span className="copilot-context-dot"></span>
+
+  <span>
+    CONTEXT
+  </span>
+
+  <strong>
+    {selectedRegion ||
+      "All regions"}
+  </strong>
+
+  <span>•</span>
+
+  <strong>
+    {selectedYear ||
+      "All years"}
+  </strong>
+
+  <span>•</span>
+
+  <strong>
+    {selectedQuarter ||
+      "All quarters"}
+  </strong>
+
+  <span className="copilot-context-hint">
+    Follow-up questions inherit this context
+  </span>
+</div>
+
 
         <div className="copilot-input-row">
 
@@ -997,6 +1072,197 @@ const totalOrders = Number(
               </div>
 
             </div>
+
+            {/* =====================================================
+    AUTOMATIC AGENT VISUALIZATION
+====================================================== */}
+
+{agentResult.visualization?.data?.length > 0 && (
+  <div className="copilot-visualization">
+
+    <div className="copilot-visualization-header">
+
+      <div>
+        <div className="copilot-trace-title">
+          GOVERNED VISUALIZATION
+        </div>
+
+        <strong>
+          {agentResult.visualization.title}
+        </strong>
+      </div>
+
+      <span className="copilot-visualization-badge">
+        ✓ VERIFIED
+      </span>
+
+    </div>
+
+    <div className="copilot-chart">
+
+      {agentResult.visualization.data.map(
+        (item, index) => {
+
+          const values =
+            agentResult.visualization.data.map(
+              (entry) =>
+                Number(entry.value ?? 0)
+            );
+
+          const maxValue =
+            Math.max(...values, 1);
+
+          const width =
+            (Number(item.value ?? 0) /
+              maxValue) *
+            100;
+
+          const isPercentage =
+            agentResult.metric ===
+            "Profit Margin";
+
+          return (
+            <div
+              className="copilot-chart-row"
+              key={`${item.label}-${index}`}
+            >
+
+              <div className="copilot-chart-label">
+                <span>
+                  {item.label}
+                </span>
+
+                <strong>
+                  {isPercentage
+                    ? `${Number(
+                        item.value ?? 0
+                      ).toFixed(2)}%`
+                    : formatAgentValue(
+                        item.value,
+                        agentResult.metric
+                      )}
+                </strong>
+              </div>
+
+              <div className="copilot-chart-track">
+
+                <div
+                  className="copilot-chart-fill"
+                  style={{
+                    width: `${Math.max(
+                      width,
+                      2
+                    )}%`,
+                  }}
+                />
+
+              </div>
+
+            </div>
+          );
+        }
+      )}
+
+    </div>
+
+    <div className="copilot-visualization-footer">
+
+      <span>
+        DIMENSION
+      </span>
+
+      <strong>
+        {agentResult.visualization.dimension}
+      </strong>
+
+      <span>
+        SOURCE
+      </span>
+
+      <strong>
+        {agentResult.visualization.source}
+      </strong>
+
+    </div>
+
+  </div>
+)}
+
+            {agentResult.query_trace?.sql && (
+  <div className="copilot-trace">
+
+    <div className="copilot-trace-actions">
+
+      <button
+        type="button"
+        className="copilot-trace-button"
+        onClick={() =>
+          setShowQueryTrace(
+            !showQueryTrace
+          )
+        }
+      >
+        {showQueryTrace
+          ? "HIDE SQL"
+          : "VIEW SQL"}
+      </button>
+
+      <button
+        type="button"
+        className="copilot-trace-button"
+        onClick={() =>
+          setShowQueryTrace(
+            "api"
+          )
+        }
+      >
+        VIEW API CALL
+      </button>
+
+    </div>
+
+    {showQueryTrace === true && (
+      <div className="copilot-trace-content">
+
+        <div className="copilot-trace-title">
+          GOVERNED SQL
+        </div>
+
+        <pre>
+          {agentResult.query_trace.sql}
+        </pre>
+
+        <div className="copilot-trace-title">
+          BOUND PARAMETERS
+        </div>
+
+        <pre>
+          {JSON.stringify(
+            agentResult.query_trace.parameters,
+            null,
+            2
+          )}
+        </pre>
+
+      </div>
+    )}
+
+    {showQueryTrace === "api" && (
+      <div className="copilot-trace-content">
+
+        <div className="copilot-trace-title">
+          API CALL
+        </div>
+
+        <pre>
+          GET {agentResult.api_call}
+        </pre>
+
+      </div>
+    )}
+
+  </div>
+)}
 
           </div>
         )}
@@ -1344,13 +1610,13 @@ const totalOrders = Number(
 
           ) : (
 
-            <div className="margin-loading">
-              Select a region, year and
-              quarter to analyze margin
-              movement.
-            </div>
+  <div className="margin-loading">
+    Select a region, year and
+    quarter to analyze margin
+    movement.
+  </div>
 
-          )}
+)}
 
         </section>
       )}
@@ -1361,6 +1627,215 @@ const totalOrders = Number(
       ====================================================== */}
 
       <section className="dashboard-grid">
+
+      {/* =====================================================
+    EXECUTIVE INTELLIGENCE
+====================================================== */}
+
+{selectedRegion &&
+  selectedYear &&
+  selectedQuarter && (
+    <section className="executive-intelligence-panel">
+
+      <div className="executive-intelligence-header">
+
+        <div>
+          <div className="executive-eyebrow">
+            EXECUTIVE INTELLIGENCE
+          </div>
+
+          <h2>
+            What changed?
+          </h2>
+
+          <p>
+            Deterministic business signals derived from
+            governed warehouse data.
+          </p>
+        </div>
+
+        <div className="executive-governance">
+          <span className="green-dot"></span>
+          VERIFIED SIGNALS
+        </div>
+
+      </div>
+
+      {insightsLoading ? (
+
+        <div className="executive-loading">
+          Analyzing business signals...
+        </div>
+
+      ) : insightsError ? (
+
+        <div className="executive-error">
+          {insightsError}
+        </div>
+
+      ) : insights ? (
+
+        <>
+
+          <div className="executive-summary">
+
+            <div className="executive-summary-label">
+              EXECUTIVE SUMMARY
+            </div>
+
+            <p>
+              {insights.summary}
+            </p>
+
+          </div>
+
+
+          <div className="executive-insight-grid">
+
+            {insights.insights.map(
+              (insight, index) => (
+
+                <div
+                  className={`executive-insight-card ${insight.type}`}
+                  key={`${insight.title}-${index}`}
+                >
+
+                  <div className="executive-insight-top">
+
+                    <span className="executive-insight-number">
+                      {String(index + 1).padStart(
+                        2,
+                        "0"
+                      )}
+                    </span>
+
+                    <span className="executive-insight-priority">
+                      {insight.priority}
+                    </span>
+
+                  </div>
+
+                  <h3>
+                    {insight.title}
+                  </h3>
+
+                  <p>
+                    {insight.message}
+                  </p>
+
+                </div>
+
+              )
+            )}
+
+          </div>
+
+
+          <div className="executive-driver-strip">
+
+            <div>
+
+              <span>
+                PRIMARY COST SIGNAL
+              </span>
+
+              <strong>
+                {insights.top_driver.name}
+              </strong>
+
+            </div>
+
+
+            <div>
+
+              <span>
+                COST-RATE MOVEMENT
+              </span>
+
+              <strong>
+                {insights.top_driver.rate_change_pp > 0
+                  ? "+"
+                  : ""}
+                {insights.top_driver.rate_change_pp.toFixed(
+                  2
+                )}
+                pp
+              </strong>
+
+            </div>
+
+
+            <div>
+
+              <span>
+                MARGIN MOVEMENT
+              </span>
+
+              <strong>
+                {insights.metrics.margin_change_pp > 0
+                  ? "+"
+                  : ""}
+                {insights.metrics.margin_change_pp.toFixed(
+                  2
+                )}
+                pp
+              </strong>
+
+            </div>
+
+
+            <div>
+
+              <span>
+                REVENUE MOVEMENT
+              </span>
+
+              <strong>
+                {insights.metrics.revenue_change_pct > 0
+                  ? "+"
+                  : ""}
+                {insights.metrics.revenue_change_pct.toFixed(
+                  1
+                )}
+                %
+              </strong>
+
+            </div>
+
+          </div>
+
+
+          <div className="executive-evidence">
+
+            <span>
+              SOURCE:{" "}
+              {insights.governance.source}
+            </span>
+
+            <span>
+              METHOD:{" "}
+              {insights.governance.calculation}
+            </span>
+
+            <span>
+              ✓ Governance passed
+            </span>
+
+          </div>
+
+        </>
+
+      ) : (
+
+        <div className="executive-loading">
+          Select a complete period to generate
+          executive insights.
+        </div>
+
+      )}
+
+    </section>
+  )}
 
 
         {/* ===================================================
@@ -2087,91 +2562,185 @@ function formatAgentFilters(
    FOLLOW-UP QUESTION CONTEXT
 =========================================================== */
 
+/* ===========================================================
+   CONTEXT-AWARE QUESTION RESOLUTION
+=========================================================== */
+
 function resolveFollowUpQuestion(
   question,
-  history
+  history,
+  dashboardContext = {}
 ) {
-  const trimmed =
-    question.trim();
+  const trimmed = question.trim();
 
-  if (
-    !trimmed ||
-    history.length === 0
-  ) {
+  if (!trimmed) {
     return trimmed;
   }
 
-  const latest =
-    history[0];
+  const lower = trimmed.toLowerCase();
 
-  if (
-    !latest?.result?.filters
-  ) {
-    return trimmed;
-  }
-
-  const lower =
-    trimmed.toLowerCase();
+  /*
+   * ---------------------------------------------------------
+   * Detect explicit context in the user's question
+   * ---------------------------------------------------------
+   */
 
   const hasRegion =
     lower.includes("asia") ||
     lower.includes("europe") ||
-    lower.includes(
-      "north america"
-    );
+    lower.includes("north america");
 
   const hasYear =
-    /\b20\d{2}\b/.test(
-      trimmed
-    );
+    /\b20\d{2}\b/.test(trimmed);
 
   const hasQuarter =
-    /\bq[1-4]\b/i.test(
-      trimmed
-    ) ||
-    lower.includes(
-      "first quarter"
-    ) ||
-    lower.includes(
-      "second quarter"
-    ) ||
-    lower.includes(
-      "third quarter"
-    ) ||
-    lower.includes(
-      "fourth quarter"
-    );
+    /\bq[1-4]\b/i.test(trimmed) ||
+    lower.includes("first quarter") ||
+    lower.includes("second quarter") ||
+    lower.includes("third quarter") ||
+    lower.includes("fourth quarter");
 
-  if (
-    hasRegion ||
-    hasYear ||
-    hasQuarter
-  ) {
-    return trimmed;
-  }
+  /*
+   * ---------------------------------------------------------
+   * Detect breakdown requests.
+   *
+   * A breakdown dimension should not inherit the same
+   * dimension as a restrictive filter.
+   *
+   * Example:
+   *
+   * Dashboard:
+   * Europe / 2025 / Q3
+   *
+   * Question:
+   * "Show revenue by region in 2025"
+   *
+   * Result:
+   * "Show revenue by region in 2025 for quarter Q3"
+   *
+   * Region is intentionally NOT inherited because the user
+   * explicitly asked for a regional breakdown.
+   * ---------------------------------------------------------
+   */
 
-  const filters =
-    latest.result.filters;
+  const asksByRegion =
+    lower.includes("by region") ||
+    lower.includes("per region") ||
+    lower.includes("regional");
+
+  const asksByQuarter =
+    lower.includes("by quarter") ||
+    lower.includes("per quarter") ||
+    lower.includes("quarterly");
+
+  const asksByMonth =
+    lower.includes("by month") ||
+    lower.includes("per month") ||
+    lower.includes("monthly") ||
+    lower.includes("over time") ||
+    lower.includes("trend");
+
+  /*
+   * ---------------------------------------------------------
+   * Build the best available context.
+   *
+   * Priority:
+   *
+   * 1. Explicit value in current question
+   * 2. Latest verified Copilot result
+   * 3. Current dashboard filters
+   * ---------------------------------------------------------
+   */
+
+  const latest = history?.[0];
+
+  const historyFilters =
+    latest?.result?.filters || {};
+
+  const context = {
+    region:
+      dashboardContext.region ||
+      historyFilters.region ||
+      "",
+
+    year:
+      dashboardContext.year ||
+      historyFilters.year ||
+      "",
+
+    quarter:
+      dashboardContext.quarter ||
+      historyFilters.quarter ||
+      "",
+  };
 
   const contextParts = [];
 
-  if (filters.region) {
+  /*
+   * ---------------------------------------------------------
+   * Region
+   *
+   * Do not inherit the selected region when the user asks
+   * for a regional breakdown.
+   * ---------------------------------------------------------
+   */
+
+  if (
+    context.region &&
+    !hasRegion &&
+    !asksByRegion
+  ) {
     contextParts.push(
-      `region ${filters.region}`
+      `region ${context.region}`
     );
   }
 
-  if (filters.year) {
+  /*
+   * ---------------------------------------------------------
+   * Year
+   *
+   * Explicit year always wins.
+   * If absent, inherit dashboard/history year.
+   * ---------------------------------------------------------
+   */
+
+  if (
+    !hasYear &&
+    context.year
+  ) {
     contextParts.push(
-      `year ${filters.year}`
+      `year ${context.year}`
     );
   }
 
-  if (filters.quarter) {
+  /*
+   * ---------------------------------------------------------
+   * Quarter
+   *
+   * Explicit quarter always wins.
+   *
+   * If the user asks for a quarter breakdown, don't force
+   * the current quarter.
+   *
+   * Otherwise inherit the current dashboard/history quarter.
+   * ---------------------------------------------------------
+   */
+
+  if (
+    !hasQuarter &&
+    context.quarter &&
+    !asksByQuarter
+  ) {
     contextParts.push(
-      `quarter ${filters.quarter}`
+      `quarter ${context.quarter}`
     );
   }
+
+  /*
+   * ---------------------------------------------------------
+   * If no context is available, return the question unchanged.
+   * ---------------------------------------------------------
+   */
 
   if (
     contextParts.length === 0

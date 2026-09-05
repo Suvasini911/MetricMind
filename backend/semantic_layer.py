@@ -10,7 +10,7 @@ METRIC_REGISTRY = {
     "revenue": {
         "label": "Revenue",
         "description": "Total recognized revenue.",
-        "source": "regional_revenue",
+        "source": "corporate_sales_raw",
         "field": "revenue",
         "formula": "SUM(revenue)",
         "format": "currency",
