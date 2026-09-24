@@ -625,13 +625,13 @@ cd C:\Users\suvasini\Desktop\MetricMind
 uvicorn backend.main:app --reload
 ```
 
-Backend:
+Backend :
 
 ```text
 http://127.0.0.1:8000
 ```
 
-Health check:
+Health check :
 
 ```powershell
 Invoke-RestMethod "http://127.0.0.1:8000/api/health"
