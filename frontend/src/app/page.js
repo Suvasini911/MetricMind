@@ -159,26 +159,41 @@ export default function Home() {
             <nav className="space-y-1">
 
               <NavItem
-                icon={<Sparkles size={16} />}
-                label="Command Center"
-                active
-              />
+  icon={<Sparkles size={16} />}
+  label="Command Center"
+  active
+  href="/"
+/>
 
-              <NavItem
-                icon={<MessageSquare size={16} />}
-                label="Ask MetricMind"
-              />
+<NavItem
+  icon={<MessageSquare size={16} />}
+  label="Ask MetricMind"
+  href="/ask"
+/>
 
-              <NavItem
+<NavItem
   icon={<BarChart3 size={16} />}
   label="Analytics"
   href="/analytics"
 />
 
+<NavItem
+  icon={<Network size={16} />}
+  label="Semantic Catalog"
+  href="/semantic-catalog"
+/>
+
               <NavItem
-                icon={<Network size={16} />}
-                label="Semantic Catalog"
-              />
+  icon={<ShieldCheck size={16} />}
+  label="Governance"
+  href="/governance"
+/>
+
+<NavItem
+  icon={<Database size={16} />}
+  label="Data Sources"
+  href="/data-sources"
+/>
 
             </nav>
 
