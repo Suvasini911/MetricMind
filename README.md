@@ -539,6 +539,34 @@ The analytics experience includes:
 
 ---
 
+## Application Pages
+
+MetricMind provides the following main application views:
+
+| Page | Purpose |
+|---|---|
+| Command Center | Project overview, intelligence pipeline, and trust layer |
+| Ask MetricMind | Conversational BI entry point and example business questions |
+| Analytics | Governed KPI analysis, filters, visualizations, query transparency, and margin intelligence |
+| Semantic Catalog | Business metrics, dimensions, and semantic definitions |
+| Governance | Governance controls, approved metrics, and analytical trust information |
+| Data Sources | Warehouse and data-source overview |
+
+### Primary Analytics Workflow
+
+A typical MetricMind analysis follows:
+
+1. User asks a business question in natural language.
+2. The intent engine interprets the request.
+3. The semantic layer maps the request to governed metrics and dimensions.
+4. Governance validates the analytical request.
+5. The Agent generates controlled, parameterized SQL.
+6. The warehouse calculates the result.
+7. MetricMind returns a verified answer with query/API transparency.
+8. Dynamic visualizations and root-cause intelligence are provided when applicable.
+
+---
+
 # 12. Data Pipeline
 
 The project includes scripts for generating, transforming, and loading the dataset.
