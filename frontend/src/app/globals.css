@@ -2152,3 +2152,649 @@ body {
   font-weight: 600;
   opacity: 0.7;
 }
+
+/* =========================================================
+   METRICMIND — EXECUTIVE BUSINESS UI POLISH
+   Safe visual override layer for the existing Analytics page.
+   Keeps existing functionality/selectors intact.
+   ========================================================= */
+
+:root {
+  --mm-bg: #f4f6f8;
+  --mm-surface: #ffffff;
+  --mm-surface-soft: #f8fafb;
+  --mm-border: #e3e7eb;
+  --mm-border-strong: #d5dbe1;
+  --mm-text: #17212b;
+  --mm-muted: #687581;
+  --mm-subtle: #8a96a1;
+  --mm-navy: #12253a;
+  --mm-accent: #1f6feb;
+  --mm-success: #14866d;
+  --mm-danger: #c84b4b;
+}
+
+html,
+body {
+  background: var(--mm-bg);
+  color: var(--mm-text);
+  font-family:
+    Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+    "Segoe UI", sans-serif;
+}
+
+body {
+  min-width: 320px;
+}
+
+.analytics-page {
+  min-height: 100vh;
+  padding: 34px 42px 48px;
+  background:
+    linear-gradient(180deg, #f8fafb 0%, #f4f6f8 42%, #eef2f5 100%);
+  color: var(--mm-text);
+}
+
+.analytics-header {
+  max-width: 1480px;
+  margin: 0 auto 24px;
+  padding-bottom: 22px;
+  border-bottom: 1px solid var(--mm-border);
+}
+
+.eyebrow,
+.copilot-eyebrow,
+.executive-eyebrow,
+.margin-intelligence-eyebrow {
+  color: #687581;
+  letter-spacing: 0.16em;
+}
+
+.analytics-header h1 {
+  color: var(--mm-navy);
+  font-size: clamp(30px, 3.5vw, 46px);
+  font-weight: 700;
+  letter-spacing: -0.035em;
+}
+
+.analytics-header h1 span {
+  color: #7c8894;
+}
+
+.analytics-header p {
+  color: var(--mm-muted);
+  max-width: 720px;
+  font-size: 13px;
+}
+
+.live-badge,
+.status-pill,
+.verified,
+.warning-badge,
+.data-source,
+.copilot-status,
+.executive-governance,
+.margin-governance-badge {
+  border-color: #d8e0e6;
+  background: #ffffff;
+  color: var(--mm-muted);
+  box-shadow: none;
+}
+
+.live-badge,
+.copilot-status,
+.executive-governance,
+.margin-governance-badge,
+.verified {
+  color: var(--mm-success);
+}
+
+.live-badge span,
+.status-pill span,
+.green-dot,
+.copilot-status .green-dot,
+.margin-governance-badge span {
+  background: var(--mm-success);
+  box-shadow: none;
+}
+
+.kpi-grid,
+.dashboard-grid,
+.two-column {
+  max-width: 1480px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.kpi-grid {
+  gap: 14px;
+  margin-bottom: 16px;
+}
+
+.kpi-card,
+.kpi,
+.panel,
+.copilot-panel,
+.executive-intelligence-panel,
+.margin-intelligence-panel {
+  border: 1px solid var(--mm-border);
+  background: var(--mm-surface);
+  border-radius: 10px;
+  box-shadow: 0 2px 8px rgba(18, 37, 58, 0.035);
+}
+
+.kpi-card,
+.kpi {
+  min-height: 128px;
+  padding: 21px;
+}
+
+.kpi-label {
+  color: #7b8792;
+  letter-spacing: 0.12em;
+}
+
+.kpi-value {
+  color: var(--mm-navy);
+  font-size: 30px;
+  font-weight: 700;
+}
+
+.kpi-meta,
+.kpi-detail {
+  color: var(--mm-success);
+}
+
+.dashboard-grid {
+  gap: 16px;
+}
+
+.panel-header {
+  padding: 17px 20px;
+  border-bottom: 1px solid var(--mm-border);
+}
+
+.panel-header h2 {
+  color: var(--mm-navy);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.panel-header p {
+  color: var(--mm-subtle);
+}
+
+.panel-dot,
+.eyebrow-dot {
+  background: var(--mm-accent);
+  box-shadow: none;
+}
+
+.panel-content,
+.region-list,
+.cost-list,
+.signal-content,
+.alert-content {
+  color: var(--mm-text);
+}
+
+.bar-track,
+.timeline-track {
+  background: #e9edf1;
+}
+
+.bar-fill,
+.cost-fill,
+.timeline-revenue {
+  background: var(--mm-accent);
+}
+
+.table {
+  border-color: var(--mm-border);
+}
+
+.table-head {
+  background: #f5f7f9;
+  color: #7a8792;
+}
+
+.table-row {
+  border-top-color: var(--mm-border);
+  color: #596672;
+}
+
+.table-row strong,
+.bar-label strong,
+.driver strong {
+  color: var(--mm-text);
+}
+
+.margin,
+.chart-margin {
+  color: var(--mm-success);
+}
+
+.driver {
+  background: var(--mm-surface-soft);
+  border-color: var(--mm-border);
+}
+
+.driver-number {
+  color: var(--mm-accent);
+}
+
+.governance-strip {
+  max-width: 1480px;
+  margin: 16px auto 0;
+  border-color: var(--mm-border);
+  background: #ffffff;
+  color: #73808c;
+  box-shadow: 0 2px 8px rgba(18, 37, 58, 0.025);
+}
+
+.governance-strip strong {
+  color: var(--mm-text);
+}
+
+.governance-strip > div:first-child {
+  color: var(--mm-success);
+}
+
+/* Copilot: make it read like an enterprise analysis workspace. */
+.copilot-panel {
+  max-width: 1480px;
+  margin: 0 auto 18px;
+  padding: 22px;
+  box-shadow: 0 3px 12px rgba(18, 37, 58, 0.045);
+}
+
+.copilot-header h2 {
+  color: var(--mm-navy);
+  font-size: 20px;
+}
+
+.copilot-header p {
+  color: var(--mm-muted);
+}
+
+.copilot-input-row input {
+  border-color: var(--mm-border-strong);
+  background: #ffffff;
+  color: var(--mm-text);
+  box-shadow: inset 0 1px 2px rgba(18, 37, 58, 0.025);
+}
+
+.copilot-input-row input::placeholder {
+  color: #9aa5ae;
+}
+
+.copilot-input-row input:focus {
+  border-color: rgba(31, 111, 235, 0.5);
+  background: #ffffff;
+  box-shadow: 0 0 0 3px rgba(31, 111, 235, 0.08);
+}
+
+.copilot-button {
+  background: var(--mm-navy);
+  color: #ffffff;
+  border-radius: 8px;
+}
+
+.copilot-examples button,
+.copilot-history-item,
+.copilot-trace-button {
+  border-color: var(--mm-border);
+  background: #ffffff;
+  color: #65727d;
+}
+
+.copilot-examples button:hover,
+.copilot-history-item:hover,
+.copilot-trace-button:hover {
+  border-color: #b9c8d6;
+  background: #f5f8fb;
+  color: var(--mm-navy);
+}
+
+.copilot-result {
+  border-color: #d9e1e8;
+  background: #ffffff;
+}
+
+.copilot-answer {
+  border-bottom-color: var(--mm-border);
+}
+
+.copilot-result-label {
+  color: var(--mm-accent);
+}
+
+.copilot-answer strong {
+  color: var(--mm-navy);
+}
+
+.copilot-answer p,
+.evidence-item strong {
+  color: var(--mm-muted);
+}
+
+.copilot-evidence {
+  background: #f8fafb;
+}
+
+.evidence-item {
+  border-right-color: var(--mm-border);
+}
+
+.evidence-item span,
+.copilot-history-title,
+.copilot-trace-title {
+  color: #7d8994;
+}
+
+.evidence-item .verified-text {
+  color: var(--mm-success);
+}
+
+.copilot-context-bar,
+.copilot-trace-content,
+.copilot-visualization {
+  border-color: var(--mm-border);
+  background: #f8fafb;
+}
+
+.copilot-context-bar strong {
+  color: var(--mm-text);
+}
+
+.copilot-trace-content pre {
+  background: #eef2f5;
+  color: #354452;
+}
+
+/* Executive intelligence: strong hierarchy, restrained risk signaling. */
+.executive-intelligence-panel,
+.margin-intelligence-panel {
+  max-width: 1480px;
+  margin-left: auto;
+  margin-right: auto;
+  padding: 24px;
+  background: var(--mm-surface);
+  box-shadow: 0 3px 12px rgba(18, 37, 58, 0.045);
+}
+
+.executive-intelligence-header h2,
+.margin-intelligence-header h2 {
+  color: var(--mm-navy);
+  font-size: 22px;
+}
+
+.executive-intelligence-header p,
+.margin-intelligence-header p {
+  color: var(--mm-muted);
+}
+
+.executive-summary,
+.margin-explanation {
+  border-left-color: var(--mm-accent);
+  background: #f6f9fc;
+}
+
+.executive-summary-label,
+.margin-explanation > span {
+  color: #75828e;
+}
+
+.executive-summary p,
+.margin-explanation p {
+  color: #42515e;
+  opacity: 1;
+}
+
+.executive-insight-grid,
+.margin-driver-grid {
+  gap: 12px;
+}
+
+.executive-insight-card,
+.margin-summary-main,
+.margin-summary-driver,
+.margin-driver-card {
+  border-color: var(--mm-border);
+  background: var(--mm-surface-soft);
+}
+
+.executive-insight-card.risk {
+  border-color: #efcaca;
+  background: #fff9f9;
+}
+
+.executive-insight-card.positive {
+  border-color: #c9e7dd;
+  background: #f7fcfa;
+}
+
+.executive-insight-card.neutral {
+  border-color: var(--mm-border);
+}
+
+.executive-insight-card h3 {
+  color: var(--mm-navy);
+}
+
+.executive-insight-card p {
+  color: #65727d;
+  opacity: 1;
+}
+
+.executive-driver-strip {
+  border-color: var(--mm-border);
+}
+
+.executive-driver-strip > div {
+  border-right-color: var(--mm-border);
+}
+
+.executive-driver-strip span,
+.margin-label {
+  color: #7b8792;
+  opacity: 1;
+}
+
+.executive-driver-strip strong,
+.margin-summary-main strong,
+.margin-summary-driver strong,
+.margin-driver-top > span {
+  color: var(--mm-text);
+}
+
+.margin-negative,
+.driver-pressure,
+.margin-change {
+  color: var(--mm-danger);
+}
+
+.margin-positive,
+.driver-improvement {
+  color: var(--mm-success);
+}
+
+.margin-rate-row {
+  color: var(--mm-navy);
+}
+
+.margin-cost-change,
+.margin-summary-main p,
+.margin-summary-driver p {
+  color: var(--mm-muted);
+  opacity: 1;
+}
+
+/* Loading/error states */
+.loading-card,
+.error-card {
+  border-color: var(--mm-border);
+  background: #ffffff;
+  color: var(--mm-text);
+  box-shadow: 0 4px 16px rgba(18, 37, 58, 0.05);
+}
+
+.loading-card h2,
+.error-card h2 {
+  color: var(--mm-navy);
+}
+
+.loading-card p,
+.error-card p {
+  color: var(--mm-muted);
+}
+
+.loading-dot {
+  background: var(--mm-accent);
+  box-shadow: none;
+}
+
+.retry-button {
+  background: var(--mm-navy);
+}
+
+/* Desktop breathing room and mobile usability. */
+@media (max-width: 1100px) {
+  .analytics-page {
+    padding: 28px 24px 40px;
+  }
+
+  .kpi-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 700px) {
+  .analytics-page {
+    padding: 20px 14px 32px;
+  }
+
+  .analytics-header {
+    padding-bottom: 18px;
+  }
+
+  .analytics-header h1 {
+    font-size: 34px;
+  }
+
+  .kpi-grid,
+  .dashboard-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .panel.wide {
+    grid-column: span 1;
+  }
+
+  .executive-intelligence-panel,
+  .margin-intelligence-panel,
+  .copilot-panel {
+    padding: 18px;
+  }
+
+  .governance-strip {
+    margin-top: 12px;
+  }
+}
+
+/* =========================================================
+   ANALYTICS FILTER BAR — EXECUTIVE CONTROLS
+   ========================================================= */
+
+.analytics-filters {
+  max-width: 1480px;
+  margin: 0 auto 18px;
+  padding: 12px 14px;
+
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+
+  border: 1px solid var(--mm-border);
+  border-radius: 10px;
+  background: #ffffff;
+
+  box-shadow: 0 2px 8px rgba(18, 37, 58, 0.035);
+}
+
+.filter-group {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 150px;
+}
+
+.filter-group label {
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.13em;
+  color: #7a8792;
+}
+
+.filter-group select {
+  height: 34px;
+  min-width: 150px;
+  padding: 0 30px 0 10px;
+
+  border: 1px solid #d8dfe5;
+  border-radius: 7px;
+
+  background: #f9fafb;
+  color: #253746;
+
+  font-size: 11px;
+  font-weight: 600;
+
+  outline: none;
+  cursor: pointer;
+}
+
+.filter-group select:hover {
+  border-color: #c2ccd5;
+  background: #ffffff;
+}
+
+.filter-group select:focus {
+  border-color: rgba(31, 111, 235, 0.45);
+  box-shadow: 0 0 0 3px rgba(31, 111, 235, 0.08);
+}
+
+.filter-reset {
+  height: 34px;
+  padding: 0 14px;
+
+  border: 1px solid #d8dfe5;
+  border-radius: 7px;
+
+  background: #ffffff;
+  color: #667480;
+
+  font-size: 10px;
+  font-weight: 600;
+
+  cursor: pointer;
+}
+
+.filter-reset:hover {
+  border-color: #b9c6d1;
+  background: #f5f8fa;
+  color: #172b3f;
+}
+
+@media (max-width: 700px) {
+  .analytics-filters {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .filter-group,
+  .filter-group select,
+  .filter-reset {
+    width: 100%;
+  }
+}
