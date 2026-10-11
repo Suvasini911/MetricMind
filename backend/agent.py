@@ -15,6 +15,42 @@ from urllib.parse import quote
 from backend.intent_engine import parse_question
 
 
+def detect_highest_margin_request(question: str) -> bool:
+    """Detect requests to rank regions by profit margin."""
+    normalized = question.lower()
+
+    asks_highest = any(
+        phrase in normalized
+        for phrase in (
+            "highest",
+            "best",
+            "top",
+            "maximum",
+            "most profitable",
+        )
+    )
+
+    asks_region = any(
+        phrase in normalized
+        for phrase in (
+            "region",
+            "regional",
+            "regions",
+        )
+    )
+
+    asks_margin = any(
+        phrase in normalized
+        for phrase in (
+            "margin",
+            "profitability",
+        )
+    )
+
+    return asks_highest and asks_region and asks_margin
+
+
+
 # =========================================================
 # DATABASE + QUERY GOVERNANCE
 # =========================================================
@@ -389,6 +425,55 @@ def execute_cost_metric(
         connection.close()
 
 
+    
+
+def execute_highest_margin_region(filters):
+    """Return the region with the highest profit margin."""
+    clauses, params = build_filter_sql(
+        {
+            key: value
+            for key, value in filters.items()
+            if key != "region"
+        }
+    )
+
+    sql = """
+        SELECT
+            region,
+            ROUND(
+                SUM(profit) * 100.0 / NULLIF(SUM(revenue), 0),
+                2
+            ) AS value
+        FROM corporate_sales_raw
+        WHERE 1=1
+    """
+
+    for clause in clauses:
+        sql += f"\nAND {clause}"
+
+    sql += """
+        GROUP BY region
+        HAVING SUM(revenue) <> 0
+        ORDER BY value DESC
+        LIMIT 1
+    """
+
+    connection = get_connection()
+    connection.row_factory = sqlite3.Row
+
+    try:
+        row = connection.execute(sql, params).fetchone()
+
+        return {
+            "region": row["region"] if row else None,
+            "value": row["value"] if row else None,
+            "sql": sql.strip(),
+            "params": params,
+        }
+    finally:
+        connection.close()
+
+
 # =========================================================
 # GOVERNED QUERY TRACE
 # =========================================================
@@ -753,22 +838,15 @@ def build_visualization(
 # AGENT
 # =========================================================
 
+
 def analyze_question(question: str):
     """
     Parse, validate and execute a natural-language
     MetricMind question.
     """
-
-    # -----------------------------------------------------
-    # Parse and validate
-    # -----------------------------------------------------
-
-    intent = parse_question(
-        question
-    )
+    intent = parse_question(question)
 
     if intent["status"] != "validated":
-
         return {
             "status": "rejected",
             "question": question,
@@ -780,19 +858,19 @@ def analyze_question(question: str):
         }
 
     metric = intent["metric"]
-
     filters = intent["filters"]
 
-    # -----------------------------------------------------
-    # Governance validation
-    # -----------------------------------------------------
-
-    governance = validate_query_governance(
-        metric
+    # Detect requests to rank regions by profit margin.
+    highest_margin_request = (
+        detect_highest_margin_request(question)
+        and metric == "profit_margin"
+        and not filters.get("region")
     )
 
-    if governance["status"] != "passed":
+    # Governance validation
+    governance = validate_query_governance(metric)
 
+    if governance["status"] != "passed":
         return {
             "status": "rejected",
             "question": question,
@@ -800,91 +878,67 @@ def analyze_question(question: str):
             "governance": "rejected",
         }
 
-    # -----------------------------------------------------
-    # Execute governed metric
-    # -----------------------------------------------------
+    ranking_result = None
 
-    if metric == "revenue":
+    # Execute the requested metric
+    if highest_margin_request:
+        ranking_result = execute_highest_margin_region(filters)
+        value = ranking_result["value"]
 
-        value = execute_revenue(
-            filters
-        )
+        if ranking_result["region"] is None:
+            return {
+                "status": "rejected",
+                "question": question,
+                "reason": "No regional margin data was found.",
+                "governance": "rejected",
+            }
 
-    elif metric == "profit":
-
-        value = execute_profit(
-            filters
-        )
-
-    elif metric == "profit_margin":
-
-        value = execute_profit_margin(
-            filters
-        )
-
-    elif metric == "orders":
-
-        value = execute_orders(
-            filters
-        )
-
-    elif metric == "material_cost":
-
-        value = execute_cost_metric(
-            filters,
-            "material_cost",
-        )
-
-    elif metric == "shipping_cost":
-
-        value = execute_cost_metric(
-            filters,
-            "shipping_cost",
-        )
-
-    elif metric == "marketing_cost":
-
-        value = execute_cost_metric(
-            filters,
-            "marketing_cost",
-        )
-
-    else:
-
-        return {
-            "status": "rejected",
-            "question": question,
-            "reason": "Unsupported metric.",
-            "governance": "rejected",
+        query_trace = {
+            "sql": ranking_result["sql"],
+            "params": ranking_result["params"],
         }
 
-    # -----------------------------------------------------
-    # Query transparency
-    # -----------------------------------------------------
+    else:
+        if metric == "revenue":
+            value = execute_revenue(filters)
+        elif metric == "profit":
+            value = execute_profit(filters)
+        elif metric == "profit_margin":
+            value = execute_profit_margin(filters)
+        elif metric == "orders":
+            value = execute_orders(filters)
+        elif metric == "material_cost":
+            value = execute_cost_metric(
+                filters, "material_cost"
+            )
+        elif metric == "shipping_cost":
+            value = execute_cost_metric(
+                filters, "shipping_cost"
+            )
+        elif metric == "marketing_cost":
+            value = execute_cost_metric(
+                filters, "marketing_cost"
+            )
+        else:
+            return {
+                "status": "rejected",
+                "question": question,
+                "reason": "Unsupported metric.",
+                "governance": "rejected",
+            }
 
-    query_trace = build_query_trace(
-        metric,
-        filters,
-    )
+        query_trace = build_query_trace(metric, filters)
 
     api_call = (
         "/api/agent/analyze"
         f"?question={quote(question)}"
     )
 
-    # -----------------------------------------------------
-    # Automatic visualization
-    # -----------------------------------------------------
-
     visualization = build_visualization(
         question,
         metric,
         filters,
     )
-
-    # -----------------------------------------------------
-    # Metric labels
-    # -----------------------------------------------------
 
     metric_labels = {
         "revenue": "Revenue",
@@ -896,11 +950,7 @@ def analyze_question(question: str):
         "marketing_cost": "Marketing Cost",
     }
 
-    # -----------------------------------------------------
-    # Final governed response
-    # -----------------------------------------------------
-
-    return {
+    response = {
         "status": "verified",
         "question": question,
         "metric": metric_labels[metric],
@@ -924,3 +974,12 @@ def analyze_question(question: str):
         "api_call": api_call,
         "visualization": visualization,
     }
+
+    if ranking_result is not None:
+        response["region"] = ranking_result["region"]
+        response["answer"] = (
+            f'{ranking_result["region"]} has the highest '
+            f'profit margin at {value:.2f}%.'
+        )
+
+    return response

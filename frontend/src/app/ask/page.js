@@ -1,11 +1,48 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import Sidebar from "../../components/Sidebar";
 
 const API = "http://127.0.0.1:8000";
 
 export default function AskMetricMindPage() {
+  
+  const [question, setQuestion] = useState("");
+  const [result, setResult] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  async function askMetricMind(selectedQuestion = question) {
+    const trimmed = selectedQuestion.trim();
+    if (!trimmed) return;
+
+    setQuestion(trimmed);
+    setLoading(true);
+    setError("");
+    setResult(null);
+
+    try {
+      const response = await fetch(
+        `${API}/api/agent/analyze?question=${encodeURIComponent(trimmed)}`
+      );
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.detail || "Request failed.");
+      }
+
+      setResult(data);
+    } catch (err) {
+      setError(
+        err.message ||
+        "Could not connect to MetricMind. Check that the backend is running."
+      );
+    } finally {
+      setLoading(false);
+    }
+  }
+
   return (
     <main className="min-h-screen bg-[#06080c] text-white">
       <div className="flex min-h-screen">
@@ -43,6 +80,88 @@ export default function AskMetricMindPage() {
               </p>
             </div>
 
+            
+            <div className="mb-6 rounded-2xl border border-indigo-400/20 bg-indigo-400/[0.04] p-6">
+              <label
+                htmlFor="metricmind-question"
+                className="mb-3 block text-sm font-medium text-white"
+              >
+                Ask a business question
+              </label>
+
+              <textarea
+                id="metricmind-question"
+                value={question}
+                onChange={(event) => setQuestion(event.target.value)}
+                onKeyDown={(event) => {
+                  if (
+                    event.key === "Enter" &&
+                    !event.shiftKey &&
+                    !loading
+                  ) {
+                    event.preventDefault();
+                    askMetricMind();
+                  }
+                }}
+                placeholder="e.g. Which region has the highest margin?"
+                rows={3}
+                className="w-full resize-y rounded-xl border border-white/10 bg-black/30 p-4 text-sm text-white placeholder:text-white/30 focus:border-indigo-400/50 focus:outline-none"
+              />
+
+              <div className="mt-3 flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => askMetricMind()}
+                  disabled={loading || !question.trim()}
+                  className="rounded-lg bg-indigo-500 px-5 py-2.5 text-sm font-medium text-white transition hover:bg-indigo-400 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {loading ? "Analyzing..." : "Ask MetricMind →"}
+                </button>
+              </div>
+
+              {error && (
+                <p className="mt-4 text-sm text-red-300">{error}</p>
+              )}
+
+              {result && (
+                <div className="mt-5 rounded-xl border border-white/10 bg-black/20 p-5">
+                  {result.status === "verified" ? (
+                    <>
+                      <p className="text-xs uppercase tracking-wider text-emerald-300">
+                        Verified result
+                      </p>
+
+                      <h3 className="mt-2 text-xl font-semibold text-white">
+                        {result.answer ||
+                          `${result.metric}: ${result.value}`}
+                      </h3>
+
+                      {result.answer && (
+                        <p className="mt-2 text-sm text-white/60">
+                          {result.metric}: {result.value}
+                          {result.metric === "Profit Margin" ? "%" : ""}
+                        </p>
+                      )}
+
+                      <p className="mt-3 text-xs text-white/40">
+                        Source: {result.source} · Governance: {result.governance}
+                      </p>
+                    </>
+                  ) : (
+                    <>
+                      <p className="text-sm font-medium text-amber-300">
+                        Question not verified
+                      </p>
+                      <p className="mt-2 text-sm text-white/60">
+                        {result.reason || "MetricMind could not validate this question."}
+                      </p>
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
+
+
             <div className="rounded-2xl border border-white/[0.08] bg-white/[0.025] p-6">
 
               <div className="mb-5">
@@ -53,21 +172,23 @@ export default function AskMetricMindPage() {
 
               <div className="grid gap-3 md:grid-cols-2">
 
-                <Example>
-                  What was Europe revenue in Q3 2025?
-                </Example>
+                
+<Example onClick={() => askMetricMind("What was Europe revenue in Q3 2025?")}>
+  What was Europe revenue in Q3 2025?
+</Example>
 
-                <Example>
-                  What was Europe profit margin in Q3 2025?
-                </Example>
+<Example onClick={() => askMetricMind("What was Europe profit margin in Q3 2025?")}>
+  What was Europe profit margin in Q3 2025?
+</Example>
 
-                <Example>
-                  Show revenue by quarter in 2025.
-                </Example>
+<Example onClick={() => askMetricMind("Show revenue by quarter in 2025.")}>
+  Show revenue by quarter in 2025.
+</Example>
 
-                <Example>
-                  Why did Europe's margin decline in Q3 2025?
-                </Example>
+<Example onClick={() => askMetricMind("Which region has the highest margin?")}>
+  Which region has the highest margin?
+</Example>
+
 
               </div>
 
@@ -134,13 +255,19 @@ function Nav({ href, label, active }) {
   );
 }
 
-function Example({ children }) {
+
+function Example({ children, onClick }) {
   return (
-    <div className="rounded-xl border border-white/[0.07] bg-white/[0.02] p-4 text-sm text-white/60">
+    <button
+      type="button"
+      onClick={onClick}
+      className="w-full rounded-xl border border-white/[0.07] bg-white/[0.02] p-4 text-left text-sm text-white/60 transition hover:border-indigo-400/30 hover:bg-white/[0.05]"
+    >
       “{children}”
-    </div>
+    </button>
   );
 }
+
 
 function Info({ title, text }) {
   return (

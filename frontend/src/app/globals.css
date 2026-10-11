@@ -3345,3 +3345,110 @@ body {
 .mm-main-content h3 {
   color: #f9fafb;
 }
+
+
+/* Fix Analytics heading contrast */
+.mm-light-shell .analytics-header h1 {
+  color: #172b45 !important;
+}
+
+.mm-light-shell .analytics-header h1 span {
+  color: #64748b !important;
+}
+
+
+/* Improve Analytics card heading contrast */
+.mm-light-shell .copilot-header h2,
+.mm-light-shell .panel-header h2,
+.mm-light-shell .margin-intelligence-header h2,
+.mm-light-shell .executive-intelligence-header h2 {
+  color: #172b45 !important;
+}
+
+
+/* Improve readability across the light Analytics dashboard */
+.mm-light-shell .analytics-header p,
+.mm-light-shell .copilot-header p,
+.mm-light-shell .panel-header p,
+.mm-light-shell .margin-intelligence-header p,
+.mm-light-shell .executive-intelligence-header p,
+.mm-light-shell .executive-summary p,
+.mm-light-shell .executive-insight-card p,
+.mm-light-shell .margin-explanation p {
+  color: #475569 !important;
+}
+
+.mm-light-shell .executive-insight-card h3,
+.mm-light-shell .executive-insight-top,
+.mm-light-shell .margin-label,
+.mm-light-shell .margin-explanation > span,
+.mm-light-shell .margin-evidence,
+.mm-light-shell .executive-evidence {
+  color: #334155 !important;
+}
+
+.mm-light-shell .panel-header h2,
+.mm-light-shell .copilot-header h2,
+.mm-light-shell .executive-intelligence-header h2,
+.mm-light-shell .margin-intelligence-header h2 {
+  color: #172b45 !important;
+}
+
+
+
+/* MetricMind: improve readability across all light-theme pages */
+.mm-light-shell {
+  color: #24364b;
+}
+
+/* Default text and secondary descriptions */
+.mm-light-shell p,
+.mm-light-shell small,
+.mm-light-shell label,
+.mm-light-shell li,
+.mm-light-shell .eyebrow,
+.mm-light-shell [class*="subtitle"],
+.mm-light-shell [class*="description"],
+.mm-light-shell [class*="detail"],
+.mm-light-shell [class*="hint"] {
+  color: #475569 !important;
+}
+
+/* Headings and card titles */
+.mm-light-shell h1,
+.mm-light-shell h2,
+.mm-light-shell h3,
+.mm-light-shell h4,
+.mm-light-shell [class*="title"] {
+  color: #172b45;
+}
+
+/* Metric labels, table headers, and metadata */
+.mm-light-shell [class*="label"],
+.mm-light-shell [class*="number"],
+.mm-light-shell [class*="evidence"],
+.mm-light-shell [class*="trace"],
+.mm-light-shell [class*="context"] {
+  color: #334155;
+}
+
+/* Form fields and placeholders */
+.mm-light-shell input,
+.mm-light-shell select,
+.mm-light-shell textarea {
+  color: #24364b;
+}
+
+.mm-light-shell input::placeholder,
+.mm-light-shell textarea::placeholder {
+  color: #64748b !important;
+  opacity: 1;
+}
+
+/* Keep muted text readable without affecting status backgrounds */
+.mm-light-shell .executive-insight-card p,
+.mm-light-shell .executive-summary p,
+.mm-light-shell .margin-explanation p,
+.mm-light-shell .panel-header p {
+  color: #475569 !important;
+}
