@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Sidebar from "../../components/Sidebar";
 
 const API = "http://127.0.0.1:8000";
 
@@ -628,7 +629,9 @@ const totalOrders = Number(
   ].join(" • ");
 
   return (
-    <main className="analytics-page">
+    <div className="mm-app-shell mm-light-shell">
+  <Sidebar />
+  <main className="mm-main-content analytics-page">
 
       {/* =====================================================
           HEADER
@@ -2302,7 +2305,8 @@ const totalOrders = Number(
       </section>
 
     </main>
-  );
+</div>
+);
 }
 
 

@@ -2798,3 +2798,550 @@ body {
     width: 100%;
   }
 }
+
+
+/* =========================================================
+   METRICMIND ANALYTICS — FINAL VISUAL REFINEMENT
+   Presentation-only overrides; preserves existing logic.
+   ========================================================= */
+
+.analytics-page {
+  min-height: 100vh;
+  padding: 34px 42px 48px;
+  background:
+    radial-gradient(
+      circle at 85% 0%,
+      rgba(41, 112, 160, 0.07),
+      transparent 30%
+    ),
+    #f4f7fa;
+  color: #172b3c;
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+.analytics-header,
+.analytics-filters,
+.kpi-grid,
+.dashboard-grid {
+  width: 100%;
+  max-width: 1480px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.analytics-header {
+  margin-bottom: 24px;
+  padding-bottom: 22px;
+  border-bottom: 1px solid #dce4eb;
+}
+
+.analytics-header h1 {
+  color: #152b40;
+  font-size: clamp(32px, 3.5vw, 46px);
+  font-weight: 700;
+  line-height: 1.12;
+  letter-spacing: -0.04em;
+}
+
+.analytics-header p {
+  color: #647587;
+  max-width: 720px;
+  line-height: 1.65;
+}
+
+.analytics-filters {
+  box-sizing: border-box;
+  padding: 16px;
+  margin-bottom: 20px;
+  align-items: flex-end;
+  border: 1px solid #dce5ed;
+  border-radius: 12px;
+  background: #ffffff;
+  box-shadow: 0 3px 12px rgba(18, 37, 58, 0.035);
+}
+
+.filter-group label {
+  color: #526678;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.filter-group select {
+  min-height: 40px;
+  border: 1px solid #d5dfe8;
+  border-radius: 7px;
+  background: #ffffff;
+  color: #20384d;
+  padding: 0 12px;
+}
+
+.filter-reset {
+  min-height: 40px;
+  border: 1px solid #d5dfe8;
+  border-radius: 7px;
+  background: #f7f9fb;
+  color: #344d62;
+  padding: 0 16px;
+  cursor: pointer;
+}
+
+.kpi-grid {
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.kpi,
+.kpi-card,
+.panel,
+.copilot-panel,
+.executive-intelligence-panel,
+.margin-intelligence-panel {
+  box-sizing: border-box;
+  border: 1px solid #dce5ed;
+  border-radius: 12px;
+  background: #ffffff;
+  box-shadow: 0 3px 12px rgba(18, 37, 58, 0.035);
+}
+
+.kpi {
+  min-width: 0;
+  padding: 22px;
+}
+
+.kpi-label {
+  color: #647789;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.kpi-value {
+  color: #16344d;
+  font-size: clamp(23px, 2.3vw, 32px);
+  font-weight: 700;
+  letter-spacing: -0.035em;
+  overflow-wrap: anywhere;
+}
+
+.kpi-detail {
+  color: #788a99;
+  font-size: 12px;
+}
+
+.copilot-panel,
+.executive-intelligence-panel,
+.margin-intelligence-panel {
+  padding: 24px;
+  margin-bottom: 20px;
+}
+
+.copilot-header,
+.executive-intelligence-header,
+.margin-intelligence-header,
+.panel-header {
+  gap: 14px;
+}
+
+.copilot-context-bar {
+  border: 1px solid #dce8f0;
+  border-radius: 8px;
+  background: #f5f9fc;
+  color: #526b7f;
+}
+
+.copilot-input-row input {
+  min-height: 44px;
+  border: 1px solid #d5e0e9;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #20384d;
+}
+
+.copilot-button {
+  min-height: 44px;
+  border-radius: 8px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.copilot-examples button,
+.copilot-history-item {
+  border-radius: 7px;
+}
+
+.copilot-result {
+  border: 1px solid #dce5ed;
+  border-radius: 10px;
+  background: #fbfcfd;
+}
+
+.copilot-answer {
+  color: #20384d;
+  line-height: 1.7;
+}
+
+.copilot-evidence {
+  gap: 10px;
+}
+
+.evidence-item {
+  border: 1px solid #e1e8ee;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.copilot-chart-track,
+.bar-track,
+.timeline-track {
+  overflow: hidden;
+  border-radius: 999px;
+  background: #eaf0f5;
+}
+
+.copilot-chart-fill,
+.bar-fill,
+.timeline-revenue {
+  border-radius: 999px;
+}
+
+.copilot-trace {
+  border: 1px solid #dce5ed;
+  border-radius: 8px;
+  background: #f7f9fb;
+}
+
+.copilot-trace-content {
+  overflow-x: auto;
+}
+
+.dashboard-grid {
+  gap: 18px;
+  align-items: start;
+}
+
+.panel {
+  min-width: 0;
+  overflow: hidden;
+}
+
+.panel-header {
+  padding: 20px 22px;
+  border-bottom: 1px solid #e8edf2;
+}
+
+.panel-header h2,
+.panel-header h3 {
+  color: #1c354a;
+}
+
+.panel-content {
+  padding: 20px 22px;
+}
+
+.bar-list,
+.driver-list {
+  gap: 16px;
+}
+
+.bar-label,
+.timeline-top,
+.driver {
+  color: #41596d;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.table-head {
+  color: #647789;
+  background: #f5f8fa;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.table-row {
+  border-bottom: 1px solid #e8edf2;
+}
+
+.table-row:last-child {
+  border-bottom: 0;
+}
+
+.margin-intelligence-panel,
+.executive-intelligence-panel {
+  width: 100%;
+  max-width: 1480px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.margin-summary,
+.executive-summary {
+  border-radius: 10px;
+  background: #f6f9fb;
+}
+
+.margin-driver-card,
+.executive-insight-card {
+  border: 1px solid #e0e7ed;
+  border-radius: 10px;
+  background: #ffffff;
+}
+
+.governance-strip {
+  width: 100%;
+  max-width: 1480px;
+  box-sizing: border-box;
+  margin: 20px auto 0;
+  padding: 14px 18px;
+  border: 1px solid #dce5ed;
+  border-radius: 10px;
+  background: #ffffff;
+  color: #617587;
+}
+
+@media (max-width: 900px) {
+  .analytics-page {
+    padding: 26px 22px 36px;
+  }
+
+  .kpi-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .dashboard-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 600px) {
+  .analytics-page {
+    padding: 20px 14px 30px;
+  }
+
+  .analytics-header h1 {
+    font-size: 32px;
+  }
+
+  .kpi-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .copilot-panel,
+  .executive-intelligence-panel,
+  .margin-intelligence-panel {
+    padding: 17px;
+  }
+
+  .panel-header,
+  .panel-content {
+    padding: 16px;
+  }
+}
+
+
+/* MetricMind shared application shell */
+.mm-app-shell {
+  min-height: 100vh;
+  display: flex;
+  background: #06080c;
+  color: #f5f7fb;
+}
+
+.mm-sidebar {
+  position: sticky;
+  top: 0;
+  display: flex;
+  flex: 0 0 248px;
+  flex-direction: column;
+  width: 248px;
+  height: 100vh;
+  box-sizing: border-box;
+  padding: 24px 16px 18px;
+  background: #0b1018;
+  border-right: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.mm-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 4px 8px 28px;
+  color: #f5f7fb;
+  text-decoration: none;
+}
+
+.mm-brand-icon {
+  display: grid;
+  width: 42px;
+  height: 42px;
+  place-items: center;
+  flex-shrink: 0;
+  border: 1px solid rgba(96, 165, 250, 0.24);
+  border-radius: 12px;
+  background: rgba(59, 130, 246, 0.12);
+  color: #7db8ff;
+}
+
+.mm-brand strong,
+.mm-brand small {
+  display: block;
+}
+
+.mm-brand strong {
+  font-size: 16px;
+  letter-spacing: -0.03em;
+}
+
+.mm-brand small {
+  margin-top: 5px;
+  color: #7e8da1;
+  font-size: 9px;
+  letter-spacing: 0.1em;
+}
+
+.mm-nav-label {
+  padding: 0 10px;
+  margin-bottom: 10px;
+  color: #718096;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.13em;
+}
+
+.mm-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.mm-nav-link {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 44px;
+  padding: 0 12px;
+  border: 1px solid transparent;
+  border-radius: 9px;
+  color: #a1adbd;
+  font-size: 13px;
+  text-decoration: none;
+  transition: background 150ms ease, color 150ms ease;
+}
+
+.mm-nav-link:hover {
+  background: rgba(255, 255, 255, 0.045);
+  color: #ffffff;
+}
+
+.mm-nav-link.active {
+  border-color: rgba(96, 165, 250, 0.18);
+  background: rgba(59, 130, 246, 0.13);
+  color: #a8d0ff;
+}
+
+.mm-sidebar-footer {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin-top: auto;
+  padding: 15px 8px 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  color: #8b9aab;
+  font-size: 11px;
+}
+
+.mm-connection-dot {
+  width: 7px;
+  height: 7px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: #38c995;
+}
+
+.mm-main-content {
+  flex: 1;
+  min-width: 0;
+}
+
+@media (max-width: 760px) {
+  .mm-app-shell {
+    flex-direction: column;
+  }
+
+  .mm-sidebar {
+    position: relative;
+    width: 100%;
+    height: auto;
+    flex-basis: auto;
+    padding: 14px;
+    border-right: 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  }
+
+  .mm-brand {
+    padding: 2px 4px 16px;
+  }
+
+  .mm-nav-label,
+  .mm-sidebar-footer {
+    display: none;
+  }
+
+  .mm-nav {
+    flex-direction: row;
+    gap: 6px;
+    overflow-x: auto;
+    padding-bottom: 3px;
+  }
+
+  .mm-nav-link {
+    flex: 0 0 auto;
+    min-height: 38px;
+    padding: 0 10px;
+    font-size: 12px;
+  }
+
+  .mm-nav-link svg {
+    width: 16px;
+    height: 16px;
+  }
+}
+
+
+/* Shared navigation with the light Analytics dashboard */
+.mm-light-shell {
+  background: #f4f7fa;
+}
+
+.mm-light-shell .mm-main-content {
+  min-height: 100vh;
+  background: #f4f7fa;
+  color: #172b3c;
+}
+
+.mm-light-shell .analytics-page {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+
+/* Final UI readability polish */
+.mm-main-content {
+  color: #f3f4f6;
+}
+
+.mm-main-content p {
+  color: #9ca3af;
+}
+
+.mm-main-content h1,
+.mm-main-content h2,
+.mm-main-content h3 {
+  color: #f9fafb;
+}

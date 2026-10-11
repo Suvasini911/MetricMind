@@ -1,8 +1,9 @@
-"use client";
+﻿"use client";
 
 import { useState } from "react";
+import Sidebar from "../components/Sidebar";
 
-import { analyzeQuestion } from "../lib/mockEngine";
+const API_BASE = "http://127.0.0.1:8000";
 
 import {
   Activity,
@@ -36,19 +37,19 @@ const platformStats = [
     status: "healthy",
   },
   {
-    label: "Certified Metrics",
-    value: "8",
-    detail: "Governed business measures",
-    icon: Gauge,
-    status: "healthy",
-  },
-  {
-    label: "Dimensions",
-    value: "4",
-    detail: "Approved analytical dimensions",
-    icon: Network,
-    status: "healthy",
-  },
+  label: "Certified Metrics",
+  value: "7",
+  detail: "Governed business measures",
+  icon: Gauge,
+  status: "healthy",
+},
+{
+  label: "Dimensions",
+  value: "3",
+  detail: "Region, year and quarter filters",
+  icon: Network,
+  status: "healthy",
+},
   {
     label: "Governance",
     value: "Passed",
@@ -67,43 +68,116 @@ export default function Home() {
   const [result, setResult] = useState(null);
   const [stage, setStage] = useState(0);
 
+  
   async function handleAnalyze() {
-    if (!query.trim() || isAnalyzing) {
+    const question = query.trim();
+
+    if (!question || isAnalyzing) {
       return;
     }
 
     setIsAnalyzing(true);
     setResult(null);
-
     setStage(1);
 
-    await new Promise((resolve) =>
-      setTimeout(resolve, 500)
-    );
+    try {
+      setStage(2);
 
-    setStage(2);
+      const response = await fetch(
+        `${API_BASE}/api/agent/analyze?question=${encodeURIComponent(question)}`
+      );
 
-    await new Promise((resolve) =>
-      setTimeout(resolve, 600)
-    );
+      const data = await response.json();
 
-    setStage(3);
+      if (!response.ok) {
+        throw new Error(
+          data.detail || "The backend could not process your question."
+        );
+      }
 
-    const analysis = await analyzeQuestion(query);
+      setStage(3);
 
-    setStage(4);
-    setResult(analysis);
-    setIsAnalyzing(false);
+      if (data.status !== "verified") {
+        setResult({
+          title: "Question not verified",
+          summary:
+            data.reason ||
+            "The question could not pass MetricMind's validation rules. Try asking about a supported metric, region, year, or quarter.",
+          metrics: [],
+          drivers: [],
+        });
+
+        setStage(4);
+        return;
+      }
+
+      const formattedValue =
+        data.metric === "Profit Margin"
+          ? `${Number(data.value).toFixed(2)}%`
+          : data.metric === "Orders"
+            ? Number(data.value).toLocaleString("en-US")
+            : new Intl.NumberFormat("en-US", {
+                style: "currency",
+                currency: "USD",
+                maximumFractionDigits: 2,
+              }).format(Number(data.value));
+
+      const filterText =
+        data.filters && Object.keys(data.filters).length
+          ? Object.entries(data.filters)
+              .map(([key, value]) => `${key}: ${value}`)
+              .join(", ")
+          : "No additional filters";
+
+      
+setResult({
+  title: `${data.metric} · Verified result`,
+  summary: `${data.metric} is ${formattedValue}. Scope: ${filterText}. Source: ${data.source || "Governed warehouse"}. Formula: ${data.formula || "Certified metric definition"}.`,
+  metrics: [
+    {
+      label: data.metric,
+      value: formattedValue,
+    },
+    {
+      label: "Governance",
+      value: "Passed",
+    },
+    {
+      label: "Data source",
+      value: data.source || "Warehouse",
+    },
+  ],
+  drivers: [],
+  visualization: data.visualization || null,
+queryTrace: data.query_trace || null,
+visualizationQueryTrace:
+  data.visualization?.query_trace || null,
+apiCall: data.api_call || null,
+});
+
+
+      setStage(4);
+    } catch (error) {
+      setResult({
+        title: "Analysis unavailable",
+        summary:
+          error.message ||
+          "Unable to connect to MetricMind's backend. Check that FastAPI is running on port 8000.",
+        metrics: [],
+        drivers: [],
+      });
+
+      setStage(0);
+    } finally {
+      setIsAnalyzing(false);
+    }
   }
 
-  function handleSuggestion(question) {
-    setQuery(question);
-    setResult(null);
-    setStage(0);
-  }
 
   return (
-    <main className="min-h-screen bg-[#06080c] text-white">
+    <div className="mm-app-shell">
+  <Sidebar />
+  <main className="mm-main-content min-h-screen bg-[#06080c] text-white">
       {/* Ambient background */}
       <div className="pointer-events-none fixed inset-0 overflow-hidden">
         <div className="absolute left-[28%] top-[-220px] h-[600px] w-[600px] rounded-full bg-indigo-500/[0.055] blur-[150px]" />
@@ -115,98 +189,7 @@ export default function Home() {
         {/* SIDEBAR */}
         {/* ================================================= */}
 
-        <aside className="hidden w-[255px] shrink-0 border-r border-white/[0.07] bg-[#090b10] lg:flex lg:flex-col">
-          {/* Brand */}
-          <div className="border-b border-white/[0.07] px-5 py-6">
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white text-black shadow-lg shadow-white/10">
-                <BarChart3 size={20} strokeWidth={2.2} />
-              </div>
-
-              <div>
-                <h1 className="text-[15px] font-semibold tracking-tight">
-                  MetricMind
-                </h1>
-
-                <p className="mt-0.5 text-[9px] uppercase tracking-[0.2em] text-white/30">
-                  Executive Intelligence
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {/* Navigation */}
-          <div className="flex-1 px-3 py-5">
-            <p className="mb-3 px-3 text-[9px] font-semibold uppercase tracking-[0.2em] text-white/25">
-              Workspace
-            </p>
-
-            <nav className="space-y-1">
-              <NavItem
-                icon={<Sparkles size={16} />}
-                label="Command Center"
-                active
-                href="/"
-              />
-
-              <NavItem
-                icon={<MessageSquare size={16} />}
-                label="Ask MetricMind"
-                href="/ask"
-              />
-
-              <NavItem
-                icon={<BarChart3 size={16} />}
-                label="Analytics"
-                href="/analytics"
-              />
-            </nav>
-
-            <p className="mb-3 mt-8 px-3 text-[9px] font-semibold uppercase tracking-[0.2em] text-white/25">
-              Trust & Governance
-            </p>
-
-            <nav className="space-y-1">
-              <NavItem
-                icon={<Network size={16} />}
-                label="Semantic Catalog"
-                href="/semantic-catalog"
-              />
-
-              <NavItem
-                icon={<ShieldCheck size={16} />}
-                label="Governance"
-                href="/governance"
-              />
-
-              <NavItem
-                icon={<Database size={16} />}
-                label="Data Sources"
-                href="/data-sources"
-              />
-            </nav>
-          </div>
-
-          {/* System status */}
-          <div className="border-t border-white/[0.07] p-4">
-            <div className="rounded-xl border border-emerald-400/10 bg-emerald-400/[0.025] p-3">
-              <div className="flex items-center gap-2">
-                <span className="relative flex h-2 w-2">
-                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-40" />
-                  <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-400" />
-                </span>
-
-                <span className="text-xs font-medium text-emerald-300">
-                  Platform operational
-                </span>
-              </div>
-
-              <p className="mt-2 text-[10px] leading-4 text-white/25">
-                Warehouse, semantic layer and governance services connected.
-              </p>
-            </div>
-          </div>
-        </aside>
+        
 
         {/* ================================================= */}
         {/* MAIN CONTENT */}
@@ -240,7 +223,7 @@ export default function Home() {
                 </span>
 
                 <kbd className="ml-5 rounded border border-white/10 px-1.5 py-0.5 text-[8px] text-white/20">
-                  ⌘ K
+                  âŒ˜ K
                 </kbd>
               </div>
 
@@ -255,7 +238,7 @@ export default function Home() {
           </header>
 
           {/* Dashboard */}
-          <div className="mx-auto max-w-[1480px] px-5 py-7 lg:px-10 lg:py-9">
+          <div className="mx-auto max-w-[1600px] px-5 py-8 lg:px-12 lg:py-11">
             {/* ================================================= */}
             {/* EXECUTIVE HERO */}
             {/* ================================================= */}
@@ -276,14 +259,14 @@ export default function Home() {
                   </span>
                 </div>
 
-                <h1 className="max-w-4xl text-3xl font-semibold leading-[1.08] tracking-[-0.04em] sm:text-4xl lg:text-[52px]">
+                <h1 className="max-w-4xl text-4xl font-semibold leading-[1.04] tracking-[-0.045em] sm:text-5xl lg:text-[64px] xl:text-[72px]">
                   From business questions
                   <span className="text-white/30">
                     {" "}to verified intelligence.
                   </span>
                 </h1>
 
-                <p className="mt-5 max-w-2xl text-sm leading-6 text-white/40">
+                <p className="mt-6 max-w-2xl text-sm leading-7 text-white/55 sm:text-base">
                   MetricMind turns natural-language business questions into
                   governed analysis, warehouse-backed answers, transparent
                   calculations, and actionable executive insight.
@@ -313,7 +296,7 @@ export default function Home() {
             {/* PLATFORM TRUST STRIP */}
             {/* ================================================= */}
 
-            <div className="mt-8 grid grid-cols-2 gap-3 xl:grid-cols-4">
+            <div className="mt-10 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
               {platformStats.map((stat) => (
                 <PlatformStat
                   key={stat.label}
@@ -326,7 +309,7 @@ export default function Home() {
             {/* ASK METRICMIND */}
             {/* ================================================= */}
 
-            <div className="mt-6 rounded-2xl border border-white/[0.08] bg-white/[0.025] p-1 shadow-2xl shadow-black/20">
+            <div className="mt-7 rounded-3xl border border-indigo-300/[0.16] bg-gradient-to-br from-indigo-400/[0.07] via-white/[0.025] to-cyan-300/[0.025] p-1 shadow-2xl shadow-indigo-950/20 transition duration-300 hover:border-indigo-300/[0.24]">
               <div className="rounded-[14px] border border-white/[0.05] bg-[#0b0e14]">
                 <div className="flex flex-col gap-5 p-5 lg:p-6">
                   <div className="flex items-center gap-3">
@@ -356,7 +339,7 @@ export default function Home() {
                           handleAnalyze();
                         }
                       }}
-                      className="min-w-0 flex-1 bg-transparent text-base text-white outline-none placeholder:text-white/20"
+                      className="min-w-0 flex-1 rounded-xl border border-white/[0.07] bg-white/[0.025] px-4 py-4 text-base text-white outline-none transition placeholder:text-white/25 focus:border-indigo-300/35 focus:bg-white/[0.04] focus:ring-4 focus:ring-indigo-400/[0.06] sm:text-lg"
                       placeholder="Ask a business question..."
                     />
 
@@ -365,7 +348,7 @@ export default function Home() {
                       disabled={
                         isAnalyzing || !query.trim()
                       }
-                      className="flex items-center justify-center gap-2 rounded-lg bg-white px-5 py-3 text-xs font-semibold text-black transition hover:bg-white/90 disabled:cursor-not-allowed disabled:opacity-40"
+                      className="flex min-h-[52px] items-center justify-center gap-2 rounded-xl bg-white px-6 py-3.5 text-sm font-semibold text-[#070910] shadow-lg shadow-white/[0.06] transition duration-200 hover:-translate-y-0.5 hover:bg-indigo-50 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:translate-y-0"
                     >
                       {isAnalyzing
                         ? "Analyzing..."
@@ -470,6 +453,72 @@ export default function Home() {
                     </div>
                   ))}
                 </div>
+
+                
+{/* Governed visualization from FastAPI */}
+{result.visualization?.data?.length > 0 && (
+  <div className="border-b border-white/[0.06] p-5 lg:p-6">
+    <div className="mb-5">
+      <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-indigo-200">
+        Warehouse visualization
+      </p>
+      <h3 className="mt-2 text-base font-semibold text-white">
+        {result.visualization.title || "Metric breakdown"}
+      </h3>
+      <p className="mt-1 text-xs text-white/40">
+        {result.visualization.dimension} · {result.visualization.metric}
+      </p>
+    </div>
+
+    <div className="space-y-4">
+      {result.visualization.data.map((point, index) => {
+        const values = result.visualization.data.map(
+          (item) => Math.abs(Number(item.value) || 0)
+        );
+        const maxValue = Math.max(...values, 1);
+        const value = Number(point.value) || 0;
+        const width = Math.max(
+          2,
+          (Math.abs(value) / maxValue) * 100
+        );
+
+        return (
+          <div key={`${point.label}-${index}`}>
+            <div className="mb-2 flex items-center justify-between gap-4">
+              <span className="text-sm text-white/65">
+                {point.label}
+              </span>
+              <span className="text-sm font-medium tabular-nums text-white">
+                {result.visualization.metric.toLowerCase().includes("revenue") ||
+result.visualization.metric.toLowerCase().includes("profit") ||
+result.visualization.metric.toLowerCase().includes("cost")
+  ? new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: "USD",
+      maximumFractionDigits: 2,
+    }).format(value)
+  : value.toLocaleString("en-US", {
+      maximumFractionDigits: 2,
+    })}
+              </span>
+            </div>
+            <div className="h-2 overflow-hidden rounded-full bg-white/[0.06]">
+              <div
+                className="h-full rounded-full bg-gradient-to-r from-indigo-400 to-cyan-300 transition-all duration-700"
+                style={{ width: `${width}%` }}
+              />
+            </div>
+          </div>
+        );
+      })}
+    </div>
+
+    <p className="mt-4 text-[11px] text-emerald-300/70">
+      Source: {result.visualization.source || "Governed warehouse"}
+    </p>
+  </div>
+)}
+
 
                 {/* Cost drivers */}
                 {result.drivers.length > 0 && (
@@ -598,10 +647,94 @@ export default function Home() {
                         />
                       </>
                     )}
+                  
                   </div>
                 </div>
+
+                {/* Actual backend query trace */}
+                {result.queryTrace && (
+                  <div className="border-t border-white/[0.06] p-5 lg:p-6">
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-indigo-200">
+                          Query Transparency
+                        </p>
+                        <p className="mt-1 text-xs text-white/40">
+                          SQL and parameters returned by the governed agent
+                        </p>
+                      </div>
+
+                      <span className="rounded-lg border border-emerald-400/15 bg-emerald-400/[0.06] px-2 py-1 text-[10px] text-emerald-300">
+                        Governed
+                      </span>
+                    </div>
+
+                    <div className="mt-4 overflow-x-auto rounded-xl border border-white/[0.07] bg-black/30 p-4">
+                      <pre className="whitespace-pre-wrap break-words font-mono text-xs leading-6 text-cyan-100/80">
+                        {result.queryTrace.sql || "No SQL trace returned."}
+                      </pre>
+                    </div>
+
+                    <p className="mt-4 text-xs font-medium text-white/55">
+                      Bound parameters
+                    </p>
+
+                    <pre className="mt-2 overflow-x-auto rounded-xl border border-white/[0.06] bg-white/[0.02] p-3 font-mono text-xs text-white/55">
+                      {JSON.stringify(
+                        result.queryTrace.parameters ?? [],
+                        null,
+                        2
+                      )}
+                    </pre>
+
+                    {result.apiCall && (
+                      <>
+                        <p className="mt-4 text-xs font-medium text-white/55">
+                          API endpoint
+                        </p>
+                        <p className="mt-2 break-all rounded-xl border border-white/[0.06] bg-white/[0.02] p-3 font-mono text-xs text-white/45">
+                          {result.apiCall}
+                        </p>
+                      </>
+                    )}
+                  
+                  </div>
+                )}
+
+                {/* Visualization SQL trace */}
+                {result.visualizationQueryTrace && (
+                  <div className="border-t border-white/[0.06] p-5 lg:p-6">
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-indigo-200">
+                      Visualization Query
+                    </p>
+                    <p className="mt-1 text-xs text-white/40">
+                      SQL used to calculate the chart breakdown
+                    </p>
+
+                    <div className="mt-4 overflow-x-auto rounded-xl border border-white/[0.07] bg-black/30 p-4">
+                      <pre className="whitespace-pre-wrap break-words font-mono text-xs leading-6 text-cyan-100/80">
+                        {result.visualizationQueryTrace.sql ||
+                          "No visualization SQL returned."}
+                      </pre>
+                    </div>
+
+                    <p className="mt-4 text-xs font-medium text-white/55">
+                      Chart query parameters
+                    </p>
+
+                    <pre className="mt-2 overflow-x-auto rounded-xl border border-white/[0.06] bg-white/[0.02] p-3 font-mono text-xs text-white/55">
+                      {JSON.stringify(
+                        result.visualizationQueryTrace.parameters ?? [],
+                        null,
+                        2
+                      )}
+                    </pre>
+                  </div>
+                )}
               </div>
             )}
+
+
 
             {/* ================================================= */}
             {/* EXECUTIVE SNAPSHOT */}
@@ -633,7 +766,7 @@ export default function Home() {
             {/* LOWER BUSINESS INTELLIGENCE GRID */}
             {/* ================================================= */}
 
-            <div className="mt-6 grid gap-6 xl:grid-cols-[1.45fr_1fr]">
+            <div className="mt-7 grid items-start gap-5 xl:grid-cols-[1.45fr_1fr]">
               {/* Intelligence pipeline */}
               <div className="rounded-2xl border border-white/[0.07] bg-white/[0.025]">
                 <div className="flex items-center justify-between border-b border-white/[0.06] px-5 py-4">
@@ -713,16 +846,16 @@ export default function Home() {
 
                 <div className="space-y-2 p-5">
                   <TrustRow
-                    label="Governed metrics"
-                    value="8"
-                    positive
-                  />
+  label="Governed metrics"
+  value="7"
+  positive
+/>
 
-                  <TrustRow
-                    label="Semantic dimensions"
-                    value="4"
-                    positive
-                  />
+<TrustRow
+  label="Semantic dimensions"
+  value="3"
+  positive
+/>
 
                   <TrustRow
                     label="Raw SQL generation"
@@ -764,7 +897,7 @@ export default function Home() {
                   </div>
 
                   <p className="text-lg font-medium tracking-tight text-white/85">
-                    AI interprets the question.
+                    The intent engine interprets the question.
                     <span className="text-white/35">
                       {" "}The data platform determines the answer.
                     </span>
@@ -789,7 +922,8 @@ export default function Home() {
           </div>
         </section>
       </div>
-    </main>
+        </main>
+  </div>
   );
 }
 

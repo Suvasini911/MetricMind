@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Sidebar from "../../components/Sidebar";
 
 const API = "http://127.0.0.1:8000";
 
@@ -9,62 +10,7 @@ export default function AskMetricMindPage() {
     <main className="min-h-screen bg-[#06080c] text-white">
       <div className="flex min-h-screen">
 
-        {/* SIDEBAR */}
-        <aside className="hidden w-[250px] shrink-0 border-r border-white/[0.07] bg-[#090b10] lg:flex lg:flex-col">
-
-          <div className="border-b border-white/[0.07] p-6">
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white text-black">
-                📊
-              </div>
-
-              <div>
-                <h1 className="text-[15px] font-semibold">
-                  MetricMind
-                </h1>
-                <p className="text-[10px] uppercase tracking-[0.18em] text-white/30">
-                  Intelligence OS
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div className="flex-1 p-4">
-
-            <p className="mb-3 px-3 text-[10px] uppercase tracking-[0.18em] text-white/25">
-              Workspace
-            </p>
-
-            <nav className="space-y-1">
-              <Nav href="/" label="Command Center" />
-              <Nav href="/ask" label="Ask MetricMind" active />
-              <Nav href="/analytics" label="Analytics" />
-              <Nav href="/semantic-catalog" label="Semantic Catalog" />
-            </nav>
-
-            <p className="mb-3 mt-8 px-3 text-[10px] uppercase tracking-[0.18em] text-white/25">
-              System
-            </p>
-
-            <nav className="space-y-1">
-              <Nav href="/governance" label="Governance" />
-              <Nav href="/data-sources" label="Data Sources" />
-            </nav>
-
-          </div>
-
-          <div className="border-t border-white/[0.07] p-4">
-            <div className="rounded-xl border border-emerald-400/10 bg-emerald-400/[0.025] p-3">
-              <p className="text-xs text-emerald-300">
-                ● Systems operational
-              </p>
-              <p className="mt-2 text-[10px] text-white/25">
-                Semantic engine connected
-              </p>
-            </div>
-          </div>
-
-        </aside>
+         <Sidebar />
 
         {/* CONTENT */}
         <section className="min-w-0 flex-1">
